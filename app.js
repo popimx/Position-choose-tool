@@ -1,78 +1,48 @@
-import { basePositions } from "./data.js";
+import { teams } from "./data.js";
 import { assign, getNumber } from "./assign.js";
 
-const membersDiv = document.getElementById("members");
+const teamSelect = document.getElementById("team-select");
 
-basePositions.forEach(p => {
-  const label = document.createElement("label");
-  label.innerHTML = `<input type="checkbox" value="${p.name}"> ${p.name}`;
-  membersDiv.appendChild(label);
-});
+let currentTeam = "teamA";
 
-// メニュー切替
-let mode = "result";
+// ★初期描画
+renderMembers();
 
-document.getElementById("menu-btn").onclick = () => {
-  mode = mode === "result" ? "list" : "result";
-
-  document.getElementById("result").style.display =
-    mode === "result" ? "block" : "none";
-
-  document.getElementById("list-view").style.display =
-    mode === "list" ? "block" : "none";
+// チーム変更
+teamSelect.onchange = () => {
+  currentTeam = teamSelect.value;
+  renderMembers();
 };
 
-// 実行
+// メンバー表示（ここが切替本体）
+function renderMembers() {
+  const membersDiv = document.getElementById("members");
+  membersDiv.innerHTML = "";
+
+  const team = teams[currentTeam];
+
+  team.customOrder.forEach(name => {
+    const m = team.basePositions.find(p => p.name === name);
+
+    const label = document.createElement("label");
+    label.innerHTML = `
+      <input type="checkbox" value="${m.name}">
+      ${m.index} ${m.name}
+    `;
+
+    membersDiv.appendChild(label);
+  });
+}
+
+// 割り当て
 document.getElementById("assign-btn").onclick = () => {
+  const team = teams[currentTeam];
+
   const absent = [...document.querySelectorAll("input:checked")]
     .map(e => e.value);
 
-  const res = assign(absent);
+  const res = assign(absent, team.basePositions);
 
-  render(res);
-  renderList(res);
+  render(res, team.basePositions);
+  renderList(res, team.basePositions);
 };
-
-// 表示
-function render(res) {
-  const div = document.getElementById("result");
-  div.innerHTML = "";
-
-  res.forEach((name, i) => {
-    const base = basePositions[i];
-
-    const el = document.createElement("div");
-    el.className = "position";
-
-    el.innerHTML = `
-      <strong>${getNumber(i + 1)} ${base.name}ポジ</strong><br>
-      <span class="${base.name !== name ? "sub" : ""}">${name}</span>
-    `;
-
-    div.appendChild(el);
-  });
-}
-
-// 一覧表示
-function renderList(res) {
-  const div = document.getElementById("list-view");
-  div.innerHTML = "";
-
-  const date = document.getElementById("date").value;
-
-  const h = document.createElement("h3");
-  h.textContent = date;
-  div.appendChild(h);
-
-  res.forEach((name, i) => {
-    const base = basePositions[i];
-
-    const row = document.createElement("div");
-    row.innerHTML = `
-      ${getNumber(i + 1)} ${base.name}ポジ
-      → ${name}
-    `;
-
-    div.appendChild(row);
-  });
-}
