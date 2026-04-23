@@ -9,39 +9,51 @@
 </head>
 
 <body>
-  <header>
-    <h1>劇場公演 割り当てツール</h1>
-  </header>
 
-  <!-- メニュー -->
-  <button id="menu-btn">📋 ポジション一覧</button>
+<header class="header">
+  <button id="menu-btn">☰</button>
+  <h1>劇場公演 割り当てツール</h1>
+</header>
 
-  <!-- チーム選択 -->
-  <label for="team-select">チーム</label>
-  <select id="team-select">
-    <option value="teamA">チームA</option>
-    <option value="teamB">チームB</option>
-  </select>
+<!-- サイドメニュー -->
+<aside id="sidebar" class="sidebar">
+  <h3>ポジション一覧</h3>
+  <div id="list-view"></div>
+</aside>
 
-  <!-- 日付 -->
-  <label for="date">日付</label>
-  <input type="date" id="date" />
+<!-- オーバーレイ -->
+<div id="overlay"></div>
 
-  <!-- メンバー -->
-  <label>休演メンバー</label>
+<!-- 上部コントロール -->
+<div class="controls">
+
+  <label>
+    チーム
+    <select id="team-select">
+      <option value="teamA">チームA</option>
+      <option value="teamB">チームB</option>
+    </select>
+  </label>
+
+  <label>
+    日付
+    <input type="date" id="date" />
+  </label>
+
+</div>
+
+<!-- メンバー -->
+<div class="section">
+  <h3>休演メンバー</h3>
   <div id="members"></div>
+</div>
 
-  <!-- 実行 -->
-  <button id="assign-btn">割り当て開始</button>
+<button id="assign-btn">割り当て</button>
 
-  <!-- 表 -->
-  <section id="result"></section>
+<div id="result"></div>
 
-  <!-- JSON -->
-  <label>JSON</label>
-  <textarea id="json-output" readonly></textarea>
+<pre id="json-output"></pre>
 
-  <!-- JS（ここが重要） -->
-  <script type="module" src="./main.js"></script>
+<script type="module" src="./main.js"></script>
 </body>
 </html>
