@@ -5,8 +5,9 @@ export function assign(absent, basePositions) {
   // =========================
   const result = basePositions.map(p => p.name);
 
-  const usedCount = new Map(); // 使用回数管理（重要）
-  const assignedFrom = new Map(); // どこから来たか記録
+  const used = new Set();              // 使用済みインデックス
+  const assignedFrom = new Map();      // どこから来たか
+  const usedCount = new Map();         // 使用回数（バランス用）
 
   // 休演処理
   for (let i = 0; i < result.length; i++) {
@@ -28,12 +29,23 @@ export function assign(absent, basePositions) {
   const getCount = (i) => usedCount.get(i) || 0;
 
   // =========================
-  // ③ 候補検索（重複なし）
+  // ③ 候補フィルタ（完全版）
   // =========================
-  function findBest(list) {
-    return list
-      .filter(i => result[i] && !usedCount.has(i))
-      .sort((a, b) => getCount(a) - getCount(b))[0];
+  function filterValid(list) {
+    return list.filter(i =>
+      i >= 0 &&
+      i < result.length &&
+      result[i] !== null &&
+      !used.has(i)
+    );
+  }
+
+  // 使用回数が少ない順
+  function pickLeastUsed(list) {
+    const valid = filterValid(list);
+    if (valid.length === 0) return undefined;
+
+    return valid.sort((a, b) => getCount(a) - getCount(b))[0];
   }
 
   // =========================
@@ -74,20 +86,22 @@ export function assign(absent, basePositions) {
   function fill(i) {
 
     const cand =
-      findBest(getSlide(i)) ??
-      findBest(getFixed(i)) ??
-      findBest(getFallback());
+      pickLeastUsed(getSlide(i)) ??
+      pickLeastUsed(getFixed(i)) ??
+      pickLeastUsed(getFallback());
 
     if (cand === undefined) return;
 
     result[i] = result[cand];
 
+    used.add(cand);
     addCount(cand);
+
     assignedFrom.set(i, cand);
   }
 
   // =========================
-  // ⑧ 実行（①〜⑯）
+  // ⑧ 実行
   // =========================
   for (let i = 0; i < 16; i++) {
     if (!result[i]) {
@@ -96,7 +110,7 @@ export function assign(absent, basePositions) {
   }
 
   // =========================
-  // ⑨ 結果返却
+  // ⑨ 返却
   // =========================
   return {
     positions: result.slice(0, 16),
