@@ -1,13 +1,7 @@
 export function assign(absent, basePositions) {
 
-  // =========================
-  // ① 初期化
-  // =========================
   const result = basePositions.map(p => p.name);
-
-  const used = new Set();              // 使用済みインデックス
-  const assignedFrom = new Map();      // どこから来たか
-  const usedCount = new Map();         // 使用回数（バランス用）
+  const used = new Set();
 
   // 休演処理
   for (let i = 0; i < result.length; i++) {
@@ -16,50 +10,19 @@ export function assign(absent, basePositions) {
     }
   }
 
-  // =========================
-  // ② ユーティリティ
-  // =========================
   const range = (s, e) =>
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
 
-  const addCount = (i) => {
-    usedCount.set(i, (usedCount.get(i) || 0) + 1);
-  };
-
-  const getCount = (i) => usedCount.get(i) || 0;
-
-  // =========================
-  // ③ 候補フィルタ（完全版）
-  // =========================
-  function filterValid(list) {
-    return list.filter(i =>
-      i >= 0 &&
-      i < result.length &&
-      result[i] !== null &&
-      !used.has(i)
-    );
+  function find(list) {
+    return list.find(i => result[i] && !used.has(i));
   }
 
-  // 使用回数が少ない順
-  function pickLeastUsed(list) {
-    const valid = filterValid(list);
-    if (valid.length === 0) return undefined;
-
-    return valid.sort((a, b) => getCount(a) - getCount(b))[0];
-  }
-
-  // =========================
-  // ④ スライドルール
-  // =========================
   function getSlide(i) {
     if (i <= 4) return range(i + 5, 10);
     if (i <= 9) return range(i + 6, 15);
     return [];
   }
 
-  // =========================
-  // ⑤ 固定ルール
-  // =========================
   function getFixed(i) {
     const map = {
       10: [16, 22],
@@ -73,50 +36,31 @@ export function assign(absent, basePositions) {
     return map[i] || [];
   }
 
-  // =========================
-  // ⑥ フォールバック（⑰以降）
-  // =========================
-  function getFallback() {
-    return range(16, result.length - 1);
-  }
-
-  // =========================
-  // ⑦ 割り当て本体
-  // =========================
   function fill(i) {
-
     const cand =
-      pickLeastUsed(getSlide(i)) ??
-      pickLeastUsed(getFixed(i)) ??
-      pickLeastUsed(getFallback());
+      find(getSlide(i)) ??
+      find(getFixed(i)) ??
+      find(range(16, result.length - 1));
 
     if (cand === undefined) return;
 
     result[i] = result[cand];
-
     used.add(cand);
-    addCount(cand);
 
-    assignedFrom.set(i, cand);
+    fill(cand); // 🔥 連鎖対応
   }
 
-  // =========================
-  // ⑧ 実行
-  // =========================
   for (let i = 0; i < 16; i++) {
-    if (!result[i]) {
-      fill(i);
-    }
+    if (!result[i]) fill(i);
   }
 
-  // =========================
-  // ⑨ 返却
-  // =========================
   return {
-    positions: result.slice(0, 16),
-    debug: {
-      usedCount: Object.fromEntries(usedCount),
-      assignedFrom: Object.fromEntries(assignedFrom)
-    }
+    positions: result.slice(0, 16)
   };
+}
+
+// 丸数字
+export function getNumber(n) {
+  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
+  return nums[n - 1];
 }
