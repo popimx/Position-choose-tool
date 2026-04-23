@@ -16,47 +16,106 @@ header h1 {
   margin-bottom: 1.5rem;
 }
 
+/* ラベル */
 label {
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
+  font-size: 1rem;
+  color: #333;
 }
 
-select, input {
+/* セレクト */
+#team-select {
+  display: block;
   width: 100%;
-  padding: 8px;
-  margin-bottom: 12px;
+  font-size: 1rem;
+  padding: 8px 10px;
+  margin-bottom: 20px;
   border-radius: 6px;
   border: 1px solid #ccc;
+  background-color: white;
+  box-sizing: border-box;
 }
 
+/* 日付 */
+#date {
+  width: 100%;
+  padding: 8px;
+  font-size: 1rem;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* メンバー */
+#members div {
+  margin-bottom: 6px;
+}
+
+#members label {
+  display: inline-block;
+  margin-right: 10px;
+  font-weight: normal;
+}
+
+/* ボタン */
 button {
+  display: block;
   width: 100%;
   padding: 15px;
-  margin-top: 10px;
-  font-size: 1.1rem;
-  background: #007aff;
+  font-size: 1.2rem;
+  background-color: #007aff;
   color: white;
   border: none;
   border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
-#members {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-  margin-bottom: 10px;
+button:hover {
+  background-color: #005bb5;
 }
 
-.position {
-  background: white;
+/* 表 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 0.95rem;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+thead {
+  background-color: #f2f2f2;
+}
+
+/* JSON */
+#json-output {
+  width: 100%;
+  height: 200px;
+  font-size: 0.9rem;
+  margin-top: 10px;
   padding: 10px;
-  margin-bottom: 8px;
   border-radius: 6px;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
-.sub {
-  color: red;
-  font-weight: bold;
+/* モバイル */
+@media screen and (max-width: 430px) {
+  #json-output {
+    height: 150px;
+  }
+
+  button {
+    font-size: 1rem;
+    padding: 12px;
+  }
 }
