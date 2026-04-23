@@ -7,15 +7,55 @@ body {
   max-width: 420px;
   margin-left: auto;
   margin-right: auto;
-}
-
-header h1 {
-  font-size: 1.4rem;
-  text-align: center;
+  font-size: 14px;
 }
 
 /* ======================
-   チェックボックス3列
+   ヘッダー
+====================== */
+header h1 {
+  font-size: 1.4rem;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* ======================
+   入力UI（統一）
+====================== */
+select,
+input[type="date"] {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+/* ======================
+   ボタン
+====================== */
+button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+/* 三本線メニュー */
+#menu-btn {
+  background: #444;
+  font-size: 14px;
+}
+
+/* ======================
+   チェックボックス（3列）
 ====================== */
 #members {
   display: flex;
@@ -27,51 +67,60 @@ header h1 {
   width: calc(33.333% - 6px);
   display: flex;
   align-items: center;
-  font-size: 0.85rem;
+  gap: 4px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
+.member-label input {
+  transform: scale(1.05);
+}
+
 .member-name {
-  white-space: nowrap; /* 改行防止 */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* ======================
-   入力UI
-====================== */
-select, input[type="date"] {
-  width: 100%;
-  padding: 6px;
-  font-size: 1rem;
-  margin-bottom: 8px;
-}
-
-/* ======================
-   ボタン
-====================== */
-button {
-  width: 100%;
-  padding: 10px;
-  font-size: 1rem;
-  background: #1976d2;
-  color: white;
-  border: none;
-  border-radius: 6px;
-}
-
-/* ======================
-   表
+   結果テーブル
 ====================== */
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
-  font-size: 0.9rem;
+  font-size: 14px;
+  background: #fff;
 }
 
 th, td {
   border: 1px solid #ccc;
   padding: 6px;
   text-align: left;
+}
+
+/* ======================
+   メニュー表示エリア
+====================== */
+#list-view {
+  display: none;
+  margin-top: 10px;
+  background: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* ======================
+   スマホ最適化
+====================== */
+@media (max-width: 420px) {
+
+  .member-label {
+    font-size: 13px;
+  }
+
+  table {
+    font-size: 13px;
+  }
 }
