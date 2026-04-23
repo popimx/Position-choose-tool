@@ -13,56 +13,35 @@
     <h1>劇場公演 割り当てツール</h1>
   </header>
 
-  <!-- ======================
-       メニューボタン
-  ======================= -->
+  <!-- メニュー -->
   <button id="menu-btn">📋 ポジション一覧</button>
 
-  <!-- ======================
-       チーム選択
-  ======================= -->
+  <!-- チーム選択 -->
   <label for="team-select">チーム</label>
   <select id="team-select">
     <option value="teamA">チームA</option>
     <option value="teamB">チームB</option>
   </select>
 
-  <!-- ======================
-       日付
-  ======================= -->
+  <!-- 日付 -->
   <label for="date">日付</label>
   <input type="date" id="date" />
 
-  <!-- ======================
-       メンバー一覧（出演者）
-  ======================= -->
-  <label>出演メンバー</label>
+  <!-- メンバー -->
+  <label>休演メンバー</label>
   <div id="members"></div>
 
-  <!-- ======================
-       休演メンバー（追加ここが重要）
-  ======================= -->
-  <label>休演メンバー</label>
-  <div id="absent-members"></div>
-
-  <!-- ======================
-       実行ボタン
-  ======================= -->
+  <!-- 実行 -->
   <button id="assign-btn">割り当て開始</button>
 
-  <!-- ======================
-       結果表示
-  ======================= -->
+  <!-- 表 -->
   <section id="result"></section>
 
-  <!-- ======================
-       一覧表示（メニュー用）
-  ======================= -->
-  <section id="list-view" style="display:none;"></section>
+  <!-- JSON -->
+  <label>JSON</label>
+  <textarea id="json-output" readonly></textarea>
 
-  <!-- ======================
-       JS（module必須）
-  ======================= -->
+  <!-- JS -->
   <script type="module" src="./app.js"></script>
 </body>
 </html>
