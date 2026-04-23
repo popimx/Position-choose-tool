@@ -6,11 +6,6 @@ import { teams } from "./data.js";
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
 const resultDiv = document.getElementById("result");
-const listView = document.getElementById("list-view");
-
-const menuBtn = document.getElementById("menu-btn");
-const sidebar = document.getElementById("sidebar");
-const overlay = document.getElementById("overlay");
 
 let currentTeam = "teamA";
 let history = [];
@@ -22,24 +17,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   currentTeam = teamSelect.value;
   await loadHistory();
   renderMembers();
-  renderList();
 });
 
 // =======================
-// メニュー
-// =======================
-menuBtn.onclick = () => {
-  sidebar.classList.add("open");
-  overlay.classList.add("show");
-};
-
-overlay.onclick = () => {
-  sidebar.classList.remove("open");
-  overlay.classList.remove("show");
-};
-
-// =======================
-// 履歴
+// 履歴読み込み
 // =======================
 async function loadHistory() {
   try {
@@ -51,20 +32,35 @@ async function loadHistory() {
 }
 
 // =======================
-// メンバー
+// チーム変更
+// =======================
+teamSelect.addEventListener("change", (e) => {
+  currentTeam = e.target.value;
+  renderMembers();
+  resultDiv.innerHTML = "";
+});
+
+// =======================
+// メンバー表示（3列＋改行防止）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
 
   const team = teams[currentTeam];
-  const list = team.customOrder || team.basePositions.map(p => p.name);
+  if (!team) return;
+
+  const list = team.customOrder?.length
+    ? team.customOrder
+    : team.basePositions.map(p => p.name);
 
   list.forEach(name => {
     const label = document.createElement("label");
 
+    label.className = "member-label";
+
     label.innerHTML = `
       <input type="checkbox" value="${name}">
-      <span>${name}</span>
+      <span class="member-name">${name}</span>
     `;
 
     membersDiv.appendChild(label);
@@ -72,32 +68,55 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当て
+// 割り当てロジック
 // =======================
-function assign(absent, base, history = []) {
+function assign(absent, basePositions, history = []) {
 
   const result = Array(16).fill(null);
   const used = new Set();
 
-  const all = base.map(p => p.name);
+  const all = basePositions.map(p => p.name);
   const available = all.filter(n => !absent.includes(n));
 
-  // 履歴優先順
-  const getHistoryPriority = (posIndex) => {
+  const range = (s, e) =>
+    Array.from({ length: e - s + 1 }, (_, i) => i + s);
+
+  function getLastUsed(posIndex) {
     for (let i = history.length - 1; i >= 0; i--) {
-      const h = history[i]?.positions?.[posIndex];
-      if (h) return h;
+      const name = history[i]?.positions?.[posIndex];
+      if (name) return name;
     }
     return null;
-  };
+  }
 
-  // 候補リスト生成
-  function getCandidates(pool, posIndex) {
+  // =========================
+  // ★この2つは絶対保持（要求通り）
+  // =========================
+  function getSlide(i) {
+    if (i <= 4) return range(i + 5, 10);
+    if (i <= 9) return range(i + 6, 15);
+    return [];
+  }
 
-    const last = getHistoryPriority(posIndex);
+  function getFixed(i) {
+    const map = {
+      10: [16, 22],
+      11: [17, 23],
+      12: [18, 24, 29],
+      13: [19, 25, 30],
+      14: [20, 26, 31],
+      15: [21, 27, 32],
+      16: [22, 28, 33]
+    };
+    return map[i] || [];
+  }
 
-    const candidates = pool
-      .map(i => base[i]?.name)
+  function pick(list, posIndex) {
+
+    const last = getLastUsed(posIndex);
+
+    const candidates = list
+      .map(i => basePositions[i]?.name)
       .filter(n => n && available.includes(n) && !used.has(n));
 
     if (!candidates.length) return null;
@@ -110,39 +129,29 @@ function assign(absent, base, history = []) {
     return candidates[0];
   }
 
-  // ⑰以降優先順位ロジック
   function fallback() {
-
-    const fixedUsed = history.flatMap(h => h.positions || []);
-    const notUsed = all.filter(n => !fixedUsed.includes(n));
-
-    const ordered = [
-      ...fixedUsed.filter(n => available.includes(n)),
-      ...notUsed.filter(n => available.includes(n))
-    ];
-
-    return ordered.find(n => !used.has(n)) || null;
+    return available.find(n => !used.has(n)) || null;
   }
 
   function fill(i) {
 
-    let name =
-      getCandidates(range(i + 5, 10), i) ??
-      getCandidates(range(i + 6, 15), i) ??
-      fallback(i);
+    const name =
+      pick(getSlide(i), i) ??
+      pick(getFixed(i), i) ??
+      fallback();
 
     if (!name) return;
 
     result[i] = name;
     used.add(name);
-  }
 
-  const range = (s, e) =>
-    Array.from({ length: e - s + 1 }, (_, i) => i + s);
+    const next = basePositions.findIndex(p => p.name === name);
+    if (next !== -1) fill(next);
+  }
 
   for (let i = 0; i < 16; i++) {
 
-    const original = base[i].name;
+    const original = basePositions[i]?.name;
 
     if (available.includes(original) && !used.has(original)) {
       result[i] = original;
@@ -158,20 +167,21 @@ function assign(absent, base, history = []) {
 // =======================
 // 実行
 // =======================
-document.getElementById("assign-btn").onclick = () => {
+document.getElementById("assign-btn").addEventListener("click", () => {
 
   const team = teams[currentTeam];
+  if (!team) return;
 
   const absent = [...document.querySelectorAll("#members input:checked")]
-    .map(e => e.value);
+    .map(el => el.value);
 
   const res = assign(absent, team.basePositions, history);
 
   renderResult(res.positions, team.basePositions);
-};
+});
 
 // =======================
-// 表
+// 表出力
 // =======================
 function renderResult(res, base) {
 
@@ -182,7 +192,7 @@ function renderResult(res, base) {
   table.innerHTML = `
     <thead>
       <tr>
-        <th>ポジ</th>
+        <th>ポジション</th>
         <th>メンバー</th>
       </tr>
     </thead>
@@ -195,7 +205,7 @@ function renderResult(res, base) {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${i + 1} ${base[i].name}</td>
+      <td>${getNumber(i + 1)} ${base[i]?.name || ""}</td>
       <td>${name || "-"}</td>
     `;
 
@@ -206,14 +216,9 @@ function renderResult(res, base) {
 }
 
 // =======================
-// サイドリスト
+// 丸数字（①〜⑯固定）
 // =======================
-function renderList() {
-  listView.innerHTML = "";
-
-  teams[currentTeam].basePositions.forEach(p => {
-    const div = document.createElement("div");
-    div.textContent = `${p.index} ${p.name}`;
-    listView.appendChild(div);
-  });
+function getNumber(n) {
+  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
+  return nums[n - 1];
 }
