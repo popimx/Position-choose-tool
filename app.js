@@ -1,38 +1,103 @@
-import { teams } from "./data.js";
-import { assign, getNumber } from "./assign.js";
+ import { teams } from "./data.js";
 
 // =======================
-// DOM取得
+// assign関数（ここに統合）
+// =======================
+function assign(absent, basePositions) {
+
+  const result = basePositions.map(p => p.name);
+  const used = new Set();
+
+  // 休演処理
+  for (let i = 0; i < result.length; i++) {
+    if (absent.includes(result[i])) {
+      result[i] = null;
+    }
+  }
+
+  const range = (s, e) =>
+    Array.from({ length: e - s + 1 }, (_, i) => i + s);
+
+  function find(list) {
+    return list.find(i => result[i] && !used.has(i));
+  }
+
+  function getSlide(i) {
+    if (i <= 4) return range(i + 5, 10);
+    if (i <= 9) return range(i + 6, 15);
+    return [];
+  }
+
+  function getFixed(i) {
+    const map = {
+      10: [16, 22],
+      11: [17, 23],
+      12: [18, 24, 29],
+      13: [19, 25, 30],
+      14: [20, 26, 31],
+      15: [21, 27, 32],
+      16: [22, 28, 33]
+    };
+    return map[i] || [];
+  }
+
+  function fill(i) {
+    const cand =
+      find(getSlide(i)) ??
+      find(getFixed(i)) ??
+      find(range(16, result.length - 1));
+
+    if (cand === undefined) return;
+
+    result[i] = result[cand];
+    used.add(cand);
+
+    fill(cand); // 🔥 連鎖
+  }
+
+  for (let i = 0; i < 16; i++) {
+    if (!result[i]) fill(i);
+  }
+
+  return result.slice(0, 16);
+}
+
+// =======================
+// 丸数字
+// =======================
+function getNumber(n) {
+  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
+  return nums[n - 1];
+}
+
+// =======================
+// DOM
 // =======================
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
-const absentDiv = document.getElementById("absent-members");
 const resultDiv = document.getElementById("result");
-const listView = document.getElementById("list-view");
 
 let currentTeam = null;
 
 // =======================
-// 初期化（重要：DOM読み込み後）
+// 初期化
 // =======================
 window.addEventListener("DOMContentLoaded", () => {
-  currentTeam = teamSelect.value; // ←ここ重要
+  currentTeam = teamSelect.value;
   renderMembers();
-  renderAbsent();
 });
 
 // =======================
-// チーム切替
+// チーム変更
 // =======================
 teamSelect.addEventListener("change", (e) => {
   currentTeam = e.target.value;
   clearUI();
   renderMembers();
-  renderAbsent();
 });
 
 // =======================
-// 出演メンバー表示
+// メンバー表示（チェック）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -45,7 +110,7 @@ function renderMembers() {
 
     label.innerHTML = `
       <input type="checkbox" value="${m.name}">
-      ${m.index} ${m.name}
+      ${m.name}
     `;
 
     membersDiv.appendChild(label);
@@ -53,47 +118,25 @@ function renderMembers() {
 }
 
 // =======================
-// 休演メンバー表示
-// =======================
-function renderAbsent() {
-  absentDiv.innerHTML = "";
-
-  const team = teams[currentTeam];
-  if (!team || !team.basePositions) return;
-
-  team.basePositions.forEach(m => {
-    const label = document.createElement("label");
-
-    label.innerHTML = `
-      <input type="checkbox" value="${m.name}">
-      ${m.name}
-    `;
-
-    absentDiv.appendChild(label);
-  });
-}
-
-// =======================
-// 割り当て
+// 割り当て実行
 // =======================
 document.getElementById("assign-btn").addEventListener("click", () => {
 
   const team = teams[currentTeam];
   if (!team) return;
 
-  const absent = getCheckedAbsent();
+  const absent = getChecked();
 
   const res = assign(absent, team.basePositions);
 
-  renderResult(res.positions, team.basePositions);
-  renderList(res.positions, team.basePositions);
+  renderResult(res, team.basePositions);
 });
 
 // =======================
-// 休演取得
+// チェック取得
 // =======================
-function getCheckedAbsent() {
-  return [...document.querySelectorAll("#absent-members input:checked")]
+function getChecked() {
+  return [...document.querySelectorAll("#members input:checked")]
     .map(el => el.value);
 }
 
@@ -104,12 +147,10 @@ function renderResult(res, base) {
   resultDiv.innerHTML = "";
 
   res.forEach((name, i) => {
-    const original = base[i]?.name || "";
-
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <strong>${getNumber(i + 1)} ${original}ポジ</strong><br>
+      <strong>${getNumber(i + 1)} ${base[i].name}ポジ</strong><br>
       ${name}
     `;
 
@@ -118,33 +159,7 @@ function renderResult(res, base) {
 }
 
 // =======================
-// 一覧表示
-// =======================
-function renderList(res, base) {
-  listView.innerHTML = "";
-
-  const date = document.getElementById("date")?.value || "未設定";
-
-  const title = document.createElement("h3");
-  title.textContent = date;
-  listView.appendChild(title);
-
-  res.forEach((name, i) => {
-    const original = base[i]?.name || "";
-
-    const row = document.createElement("div");
-    row.textContent = `${getNumber(i + 1)} ${original} → ${name}`;
-
-    listView.appendChild(row);
-  });
-}
-
-// =======================
-// UIクリア
-// =======================
 function clearUI() {
   membersDiv.innerHTML = "";
-  absentDiv.innerHTML = "";
   resultDiv.innerHTML = "";
-  listView.innerHTML = "";
 }
