@@ -4,6 +4,7 @@ import { assign, getNumber } from "./assign.js";
 // =======================
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
+const absentDiv = document.getElementById("absent-members");
 const resultDiv = document.getElementById("result");
 const listView = document.getElementById("list-view");
 
@@ -12,11 +13,10 @@ let currentTeam = "teamA";
 // =======================
 // 初期化
 // =======================
-init();
-
-function init() {
+window.addEventListener("DOMContentLoaded", () => {
   renderMembers();
-}
+  renderAbsent();
+});
 
 // =======================
 // チーム切替
@@ -26,10 +26,11 @@ teamSelect.addEventListener("change", (e) => {
 
   clearUI();
   renderMembers();
+  renderAbsent();
 });
 
 // =======================
-// メンバー描画
+// メンバー（表示順）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -37,10 +38,7 @@ function renderMembers() {
   const team = teams[currentTeam];
   if (!team) return;
 
-  team.customOrder.forEach(name => {
-    const m = team.basePositions.find(p => p.name === name);
-    if (!m) return;
-
+  team.basePositions.forEach(m => {
     const label = document.createElement("label");
 
     label.innerHTML = `
@@ -53,33 +51,47 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当て
+// 休演候補一覧（ここが重要）
+// =======================
+function renderAbsent() {
+  absentDiv.innerHTML = "";
+
+  const team = teams[currentTeam];
+  if (!team) return;
+
+  team.basePositions.forEach(m => {
+    const label = document.createElement("label");
+
+    label.innerHTML = `
+      <input type="checkbox" value="${m.name}">
+      ${m.name}
+    `;
+
+    absentDiv.appendChild(label);
+  });
+}
+
+// =======================
+// 割り当て実行
 // =======================
 document.getElementById("assign-btn").addEventListener("click", () => {
 
   const team = teams[currentTeam];
   if (!team) return;
 
-  const absent = getCheckedMembers();
+  const absent = getCheckedAbsent();
 
-  let res = [];
+  const res = assign(absent, team.basePositions);
 
-  try {
-    res = assign(absent, team.basePositions);
-  } catch (e) {
-    console.error("assignエラー:", e);
-    return;
-  }
-
-  renderResult(res, team.basePositions);
-  renderList(res, team.basePositions);
+  renderResult(res.positions, team.basePositions);
+  renderList(res.positions, team.basePositions);
 });
 
 // =======================
-// チェック取得
+// 休演取得
 // =======================
-function getCheckedMembers() {
-  return [...document.querySelectorAll("#members input:checked")]
+function getCheckedAbsent() {
+  return [...document.querySelectorAll("#absent-members input:checked")]
     .map(el => el.value);
 }
 
@@ -130,6 +142,7 @@ function renderList(res, base) {
 // =======================
 function clearUI() {
   membersDiv.innerHTML = "";
+  absentDiv.innerHTML = "";
   resultDiv.innerHTML = "";
   listView.innerHTML = "";
 }
