@@ -10,24 +10,35 @@
 
 <body>
 
+<!-- ======================
+ヘッダー（固定）
+====================== -->
 <header class="header">
-  <button id="menu-btn">☰</button>
+  <button id="menu-btn" class="menu-btn">☰</button>
   <h1>劇場公演 割り当てツール</h1>
 </header>
 
-<!-- サイドメニュー -->
+<!-- ======================
+サイドメニュー（履歴）
+====================== -->
 <aside id="sidebar" class="sidebar">
-  <h3>ポジション一覧</h3>
+  <div class="sidebar-header">
+    <h3>チームA 公演履歴</h3>
+  </div>
+
+  <!-- 横比較UIがここに出る -->
   <div id="list-view"></div>
 </aside>
 
-<!-- オーバーレイ -->
+<!-- 背景オーバーレイ -->
 <div id="overlay"></div>
 
-<!-- 上部コントロール -->
+<!-- ======================
+上部コントロール
+====================== -->
 <div class="controls">
 
-  <label>
+  <label class="control-item">
     チーム
     <select id="team-select">
       <option value="teamA">チームA</option>
@@ -35,25 +46,35 @@
     </select>
   </label>
 
-  <label>
+  <label class="control-item">
     日付
     <input type="date" id="date" />
   </label>
 
 </div>
 
-<!-- メンバー -->
+<!-- ======================
+休演チェック
+====================== -->
 <div class="section">
   <h3>休演メンバー</h3>
-  <div id="members"></div>
+  <div id="members" class="members"></div>
 </div>
 
-<button id="assign-btn">割り当て</button>
+<!-- ======================
+実行
+====================== -->
+<button id="assign-btn" class="main-btn">割り当て</button>
 
-<div id="result"></div>
+<!-- ======================
+結果
+====================== -->
+<div id="result" class="result"></div>
 
-<pre id="json-output"></pre>
+<!-- JSON出力 -->
+<pre id="json-output" class="json-output"></pre>
 
 <script type="module" src="./main.js"></script>
+
 </body>
 </html>
