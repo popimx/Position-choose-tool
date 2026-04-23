@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>公演 ポジション割当ツール</title>
+</head>
+<body>
+
+<h2>公演選択</h2>
+<select id="stageSelect"></select>
+
+<h2>日付</h2>
+<input type="date" id="date">
+
+<h2>休演メンバー</h2>
+<div id="members"></div>
+
+<button onclick="run()">割り当て</button>
+
+<h3>表</h3>
+<div id="table"></div>
+
+<h3>JSON</h3>
+<textarea id="json" style="width:100%;height:200px;"></textarea>
+<button onclick="copyJson()">コピー</button>
+
+<button onclick="save()">保存</button>
+
+<script type="module">
+import { basePositions } from "./data.js";
+import { assign, getNumber } from "./main.js";
+import { saveData } from "./storage.js";
+
+let performances = [];
+
+async function init() {
+  const res = await fetch("./performance/performance.json");
+  performances = await res.json();
+
+  const select = document.getElementById("stageSelect");
+
+  performances.forEach((p, i) => {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = `${p.date} ${p.stage}`;
+    select.appendChild(option);
+  });
+
+  const container = document.getElementById("members");
+
+  basePositions.slice(0,16).forEach(p => {
+    const label = document.createElement("label");
+    label.innerHTML = `<input type="checkbox" value="${p.name}"> ${p.index} ${p.name}`;
+    container.appendChild(label);
+  });
+}
+
+window.run = function () {
+  const checked = [...document.querySelectorAll("input:checked")].map(el => el.value);
+  const perf = performances[document.getElementById("stageSelect").value];
+
+  const result = assign(checked);
+
+  renderTable(result);
+  renderJSON(result, perf);
+};
+
+function renderTable(result) {
+  const table = document.createElement("table");
+  table.border = "1";
+
+  result.forEach((name, i) => {
+    const tr = document.createElement("tr");
+
+    const base = basePositions[i];
+
+    tr.innerHTML = `
+      <td>${getNumber(i+1)}</td>
+      <td>${base.name}ポジ</td>
+      <td style="${base.name !== name ? 'color:red' : ''}">${name}</td>
+    `;
+
+    table.appendChild(tr);
+  });
+
+  const container = document.getElementById("table");
+  container.innerHTML = "";
+  container.appendChild(table);
+}
+
+function renderJSON(result, perf) {
+  const data = {
+    date: document.getElementById("date").value || perf.date,
+    stage: perf.stage,
+    positions: result.map((name, i) => ({
+      position: `${getNumber(i+1)} ${basePositions[i].name}ポジ`,
+      member: name
+    }))
+  };
+
+  window.currentData = data;
+
+  document.getElementById("json").value =
+    JSON.stringify(data, null, 2);
+}
+
+window.copyJson = function () {
+  const textarea = document.getElementById("json");
+  textarea.select();
+  document.execCommand("copy");
+};
+
+window.save = function () {
+  saveData(window.currentData);
+  alert("保存しました");
+};
+
+init();
+</script>
+
+</body>
+</html>
