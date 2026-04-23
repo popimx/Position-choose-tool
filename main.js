@@ -90,7 +90,7 @@ function assign(absent, basePositions, history = []) {
   }
 
   // =========================
-  // ★この2つは絶対保持（要求通り）
+  // ★この2つは絶対保持
   // =========================
   function getSlide(i) {
     if (i <= 4) return range(i + 5, 10);
@@ -160,7 +160,12 @@ function assign(absent, basePositions, history = []) {
     }
   }
 
-  return { positions: result };
+  // =========================
+  // 🔥 ここで強制カット（重要）
+  // =========================
+  const trimmed = result.slice(0, 16);
+
+  return { positions: trimmed };
 }
 
 // =======================
@@ -201,6 +206,10 @@ function renderResult(res, base) {
   const tbody = table.querySelector("tbody");
 
   res.forEach((name, i) => {
+
+    // 🔥 ①〜⑯以外は絶対表示しない
+    if (i >= 16) return;
+
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
