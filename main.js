@@ -1,40 +1,50 @@
 // =======================
-// ポジション割り当て（①始まり版）
+// ポジション割り当て（完成版）
 // =======================
 export function assign(absent, basePositions) {
 
-  // 名前配列（1始まり用にダミー追加）
-  const names = [null, ...basePositions.map(p => p.name)];
+  // 全メンバー
+  const all = basePositions.map(p => p.name);
 
   // 出演可能
-  const available = names.filter(n => n && !absent.includes(n));
+  const available = all.filter(name => !absent.includes(name));
 
   // 結果（①〜⑯）
-  const result = Array(17).fill(null);
+  const result = basePositions.map(p => p.name);
 
-  const used = new Set();
+  // 空席化（休演）
+  for (let i = 1; i <= 16; i++) {
+    if (absent.includes(result[i - 1])) {
+      result[i - 1] = null;
+    }
+  }
 
-  // 範囲（①始まり）
+  // =======================
+  // ユーティリティ（①始まり）
+  // =======================
   const range = (s, e) =>
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
 
-  // 候補検索
-  function find(list) {
-    return list.find(i => {
-      const name = names[i];
-      return name && available.includes(name) && !used.has(name);
-    });
-  }
+  const getName = (pos) => basePositions[pos - 1]?.name;
 
-  // スライド
-  function getSlide(i) {
-    if (i <= 5) return range(i + 5, 10);
-    if (i <= 10) return range(i + 6, 15);
+  const isAvailable = (pos) => {
+    const name = getName(pos);
+    return name && available.includes(name);
+  };
+
+  // =======================
+  // スライドルール
+  // =======================
+  function getSlide(pos) {
+    if (pos <= 5) return range(pos + 5, 11);
+    if (pos <= 10) return range(pos + 6, 16);
     return [];
   }
 
-  // 固定
-  function getFixed(i) {
+  // =======================
+  // 固定ルール
+  // =======================
+  function getFixed(pos) {
     const map = {
       11: [17, 23],
       12: [18, 24, 29],
@@ -43,46 +53,84 @@ export function assign(absent, basePositions) {
       15: [21, 27, 32],
       16: [22, 28, 33]
     };
-    return map[i] || [];
+    return map[pos] || [];
   }
 
-  // 割り当て
-  function fill(i) {
+  // =======================
+  // フォールバック（⑰以降）
+  // =======================
+  function getFallback() {
+    return range(17, basePositions.length);
+  }
 
-    const cand =
-      find(getSlide(i)) ??
-      find(getFixed(i)) ??
-      find(range(17, names.length - 1));
+  // =======================
+  // 割り当て（連鎖）
+  // =======================
+  function fill(pos) {
 
-    if (!cand) return;
+    let candidate = null;
 
-    const name = names[cand];
+    // ① スライド
+    for (const p of getSlide(pos)) {
+      if (isAvailable(p)) {
+        candidate = p;
+        break;
+      }
+    }
 
-    result[i] = name;
-    used.add(name);
+    // ② 固定
+    if (!candidate) {
+      for (const p of getFixed(pos)) {
+        if (isAvailable(p)) {
+          candidate = p;
+          break;
+        }
+      }
+    }
 
-    // ①〜⑯だけ連鎖
-    if (cand <= 16 && !result[cand]) {
-      fill(cand);
+    // ③ フォールバック
+    if (!candidate) {
+      for (const p of getFallback()) {
+        if (isAvailable(p)) {
+          candidate = p;
+          break;
+        }
+      }
+    }
+
+    if (!candidate) return;
+
+    // 🔥 移動（コピーじゃない）
+    result[pos - 1] = getName(candidate);
+
+    // 元ポジを空ける（超重要）
+    if (candidate <= 16) {
+      result[candidate - 1] = null;
+      fill(candidate); // 連鎖
     }
   }
 
-  // メイン
-  for (let i = 1; i <= 16; i++) {
+  // =======================
+  // メイン処理
+  // =======================
+  for (let pos = 1; pos <= 16; pos++) {
 
-    const original = names[i];
+    const original = getName(pos);
 
-    if (available.includes(original) && !used.has(original)) {
-      result[i] = original;
-      used.add(original);
+    if (result[pos - 1] !== null) continue;
+
+    if (available.includes(original)) {
+      result[pos - 1] = original;
     } else {
-      fill(i);
+      fill(pos);
     }
   }
 
-  // ①〜⑯だけ返す
+  // =======================
+  // 返却
+  // =======================
   return {
-    positions: result.slice(1, 17)
+    positions: result.slice(0, 16)
   };
 }
 
