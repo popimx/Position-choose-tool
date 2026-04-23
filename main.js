@@ -6,6 +6,7 @@ import { teams } from "./data.js";
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
 const resultDiv = document.getElementById("result");
+const menuBtn = document.getElementById("menu-btn");
 
 let currentTeam = "teamA";
 let history = [];
@@ -17,6 +18,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   currentTeam = teamSelect.value;
   await loadHistory();
   renderMembers();
+  buildMenu();
 });
 
 // =======================
@@ -38,10 +40,11 @@ teamSelect.addEventListener("change", (e) => {
   currentTeam = e.target.value;
   renderMembers();
   resultDiv.innerHTML = "";
+  buildMenu();
 });
 
 // =======================
-// メンバー表示（3列＋改行防止）
+// メンバー表示（3列）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -55,7 +58,6 @@ function renderMembers() {
 
   list.forEach(name => {
     const label = document.createElement("label");
-
     label.className = "member-label";
 
     label.innerHTML = `
@@ -68,7 +70,7 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当てロジック
+// 割り当て（①〜⑯固定）
 // =======================
 function assign(absent, basePositions, history = []) {
 
@@ -89,9 +91,6 @@ function assign(absent, basePositions, history = []) {
     return null;
   }
 
-  // =========================
-  // ★この2つは絶対保持
-  // =========================
   function getSlide(i) {
     if (i <= 4) return range(i + 5, 10);
     if (i <= 9) return range(i + 6, 15);
@@ -111,7 +110,6 @@ function assign(absent, basePositions, history = []) {
   }
 
   function pick(list, posIndex) {
-
     const last = getLastUsed(posIndex);
 
     const candidates = list
@@ -160,12 +158,7 @@ function assign(absent, basePositions, history = []) {
     }
   }
 
-  // =========================
-  // 🔥 ここで強制カット（重要）
-  // =========================
-  const trimmed = result.slice(0, 16);
-
-  return { positions: trimmed };
+  return { positions: result.slice(0, 16) };
 }
 
 // =======================
@@ -182,10 +175,11 @@ document.getElementById("assign-btn").addEventListener("click", () => {
   const res = assign(absent, team.basePositions, history);
 
   renderResult(res.positions, team.basePositions);
+  buildMenu(); // 履歴更新
 });
 
 // =======================
-// 表出力
+// 表出力（①〜⑯のみ）
 // =======================
 function renderResult(res, base) {
 
@@ -205,10 +199,7 @@ function renderResult(res, base) {
 
   const tbody = table.querySelector("tbody");
 
-  res.forEach((name, i) => {
-
-    // 🔥 ①〜⑯以外は絶対表示しない
-    if (i >= 16) return;
+  res.slice(0, 16).forEach((name, i) => {
 
     const tr = document.createElement("tr");
 
@@ -224,9 +215,81 @@ function renderResult(res, base) {
 }
 
 // =======================
-// 丸数字（①〜⑯固定）
+// 丸数字
 // =======================
 function getNumber(n) {
   const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
   return nums[n - 1];
 }
+
+// ======================================================
+// 🔥 メニュー：4/1・4/2 横比較UI
+// ======================================================
+function buildMenu() {
+
+  const menu = document.getElementById("menu-panel");
+  if (!menu) return;
+
+  menu.innerHTML = "";
+
+  const teamHistory = history.filter(h => h.stage === currentTeam);
+
+  const title = document.createElement("h3");
+  title.textContent = `${currentTeam} 公演履歴`;
+  menu.appendChild(title);
+
+  const wrapper = document.createElement("div");
+  wrapper.style.overflowX = "auto";
+
+  const table = document.createElement("table");
+
+  const dates = teamHistory.map(h => h.date);
+
+  let html = `<thead><tr><th>メンバー</th>`;
+  dates.forEach(d => html += `<th>${d}</th>`);
+  html += `</tr></thead><tbody>`;
+
+  const base = teams[currentTeam]?.basePositions || [];
+
+  base.slice(0, 16).forEach((p, i) => {
+
+    html += `<tr><td>${p.name}</td>`;
+
+    teamHistory.forEach(h => {
+      html += `<td>${h.positions[i] || "-"}</td>`;
+    });
+
+    html += `</tr>`;
+  });
+
+  html += `</tbody>`;
+
+  table.innerHTML = html;
+
+  wrapper.appendChild(table);
+  menu.appendChild(wrapper);
+
+  // 詳細展開
+  teamHistory.forEach(h => {
+
+    const d = document.createElement("details");
+
+    d.innerHTML = `
+      <summary>${h.date}</summary>
+      <pre>${JSON.stringify(h.positions, null, 2)}</pre>
+    `;
+
+    menu.appendChild(d);
+  });
+}
+
+// =======================
+// メニュー開閉
+// =======================
+menuBtn?.addEventListener("click", () => {
+  const menu = document.getElementById("menu-panel");
+  if (!menu) return;
+
+  menu.style.display =
+    menu.style.display === "block" ? "none" : "block";
+});
