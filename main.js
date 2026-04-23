@@ -44,7 +44,7 @@ teamSelect.addEventListener("change", () => {
 });
 
 // =======================
-// メンバーUI（3列固定）
+// メンバーUI
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -84,7 +84,7 @@ function assign(absent, base, history = []) {
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
 
   // =========================
-  // 履歴参照
+  // 履歴取得（最優先）
   // =========================
   function lastUsed(posIndex) {
     for (let i = history.length - 1; i >= 0; i--) {
@@ -119,13 +119,13 @@ function assign(absent, base, history = []) {
   }
 
   // =========================
-  // 候補生成（超重要）
+  // 候補生成（履歴最優先）
   // =========================
-  function buildCandidates(indexList, posIndex) {
+  function pick(indexList, posIndex) {
 
     const last = lastUsed(posIndex);
 
-    const list = indexList
+    const candidates = indexList
       .map(i => base[i]?.name)
       .filter(n =>
         n &&
@@ -133,53 +133,58 @@ function assign(absent, base, history = []) {
         !used.has(n)
       );
 
-    if (!list.length) return null;
+    if (!candidates.length) return null;
 
-    // 履歴優先
-    if (last && list.includes(last)) {
-      const i = list.indexOf(last);
-      return list[(i + 1) % list.length];
+    // ★履歴があれば最優先で使う
+    if (last && candidates.includes(last)) {
+      return last;
     }
 
-    return list[0];
+    return candidates[0];
   }
 
   // =========================
-  // fallback（暴走防止版）
+  // fallback（暴走防止）
   // =========================
   function fallback() {
     return names.find(n => !absentSet.has(n) && !used.has(n)) || null;
   }
 
   // =========================
-  // 1ポジション確定（再帰禁止）
+  // 解決
   // =========================
   function resolve(i) {
-
-    const name =
-      buildCandidates(getSlide(i), i) ??
-      buildCandidates(getFixed(i), i) ??
-      fallback();
-
-    return name;
+    return (
+      pick(getSlide(i), i) ??
+      pick(getFixed(i), i) ??
+      fallback()
+    );
   }
 
   // =========================
-  // メイン
+  // メイン処理
   // =========================
   for (let i = 0; i < 16; i++) {
 
     const original = base[i]?.name;
 
-    if (original && !absentSet.has(original) && !used.has(original)) {
-      result[i] = original;
-      used.add(original);
-      continue;
+    // 休演じゃなければ履歴を優先再現
+    const hist = lastUsed(i);
+
+    if (original && !absentSet.has(original)) {
+
+      const use = hist && !used.has(hist) ? hist : original;
+
+      if (use && !used.has(use)) {
+        result[i] = use;
+        used.add(use);
+        continue;
+      }
     }
 
     const name = resolve(i);
 
-    if (name) {
+    if (name && !used.has(name)) {
       result[i] = name;
       used.add(name);
     }
@@ -249,7 +254,7 @@ function getNumber(n) {
 }
 
 // =======================
-// メニュー（簡易安定版）
+// メニュー
 // =======================
 function buildMenu() {
 
