@@ -1,29 +1,21 @@
 import { teams } from "./data.js";
 import { assign, getNumber } from "./main.js";
 
-// =======================
 // DOM
-// =======================
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
 const resultDiv = document.getElementById("result");
+const jsonOutput = document.getElementById("json-output");
 
-// =======================
-// 状態
-// =======================
 let currentTeam = null;
 
-// =======================
-// 初期化（超重要）
-// =======================
+// 初期化
 window.addEventListener("DOMContentLoaded", () => {
   currentTeam = teamSelect.value;
   renderMembers();
 });
 
-// =======================
 // チーム変更
-// =======================
 teamSelect.addEventListener("change", (e) => {
   currentTeam = e.target.value;
   clearUI();
@@ -31,15 +23,14 @@ teamSelect.addEventListener("change", (e) => {
 });
 
 // =======================
-// メンバー表示（チェック形式）
+// メンバー表示
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
 
   const team = teams[currentTeam];
-  if (!team || !team.basePositions) return;
+  if (!team) return;
 
-  // ===== 行分け（指定レイアウト）=====
   const rows = [
     ["岩立沙穂","徳永羚海","武藤小麟","平田侑希","久保姫菜乃"],
     ["花田藍衣","坂本真凛","荒野姫楓","倉本羽菜","浅井裕華"],
@@ -72,32 +63,33 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当て実行
+// 割り当て
 // =======================
 document.getElementById("assign-btn").addEventListener("click", () => {
 
   const team = teams[currentTeam];
   if (!team) return;
 
-  const absent = getCheckedMembers();
+  const absent = getChecked();
 
   const res = assign(absent, team.basePositions);
 
-  renderResult(res.positions, team.basePositions);
+  renderTable(res.positions, team.basePositions);
+  renderJSON(res.positions, team.basePositions);
 });
 
 // =======================
 // チェック取得
 // =======================
-function getCheckedMembers() {
+function getChecked() {
   return [...document.querySelectorAll("#members input:checked")]
     .map(el => el.value);
 }
 
 // =======================
-// 表形式表示（ここがあなたのやつ）
+// 表表示
 // =======================
-function renderResult(res, base) {
+function renderTable(res, base) {
   resultDiv.innerHTML = "";
 
   const table = document.createElement("table");
@@ -119,7 +111,7 @@ function renderResult(res, base) {
 
     tr.innerHTML = `
       <td>${getNumber(i + 1)} ${base[i].name}ポジ</td>
-      <td>${name ?? "-"}</td>
+      <td>${name}</td>
     `;
 
     tbody.appendChild(tr);
@@ -129,9 +121,28 @@ function renderResult(res, base) {
 }
 
 // =======================
+// JSON出力
+// =======================
+function renderJSON(res, base) {
+
+  const date = document.getElementById("date")?.value || "";
+
+  const json = {
+    date: date,
+    positions: res.map((name, i) => ({
+      position: `${getNumber(i + 1)} ${base[i].name}ポジ`,
+      member: name
+    }))
+  };
+
+  jsonOutput.value = JSON.stringify(json, null, 2);
+}
+
+// =======================
 // UIリセット
 // =======================
 function clearUI() {
   membersDiv.innerHTML = "";
   resultDiv.innerHTML = "";
+  jsonOutput.value = "";
 }
