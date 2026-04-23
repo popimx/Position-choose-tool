@@ -77,7 +77,7 @@ function range(s, e) {
 }
 
 // =======================
-// 履歴取得（ポジション単位）
+// 履歴取得
 // =======================
 function lastUsed(posIndex) {
   for (let i = history.length - 1; i >= 0; i--) {
@@ -112,7 +112,7 @@ function getFixed(i) {
 }
 
 // =======================
-// ⑰以降（fallback専用）
+// ⑰以降
 // =======================
 function getExtraPool(base, used, absentSet) {
   return base
@@ -121,7 +121,7 @@ function getExtraPool(base, used, absentSet) {
 }
 
 // =======================
-// 割り当て本体
+// 割り当て
 // =======================
 function assign(absent, base) {
 
@@ -131,61 +131,40 @@ function assign(absent, base) {
 
   const baseNames = base.map(p => p.name);
 
-  // =========================
-  // STEP 1: ベース固定（①〜⑯）
-  // =========================
+  // STEP1: ベース固定
   for (let i = 0; i < 16; i++) {
-
     const name = base[i]?.name;
-
-    if (!name || absentSet.has(name)) {
-      continue;
-    }
+    if (!name || absentSet.has(name)) continue;
 
     result[i] = name;
     used.add(name);
   }
 
-  // =========================
-  // STEP 2: 空き枠処理
-  // =========================
+  // STEP2: 空き枠
   for (let i = 0; i < 16; i++) {
 
     if (result[i]) continue;
 
     const last = lastUsed(i);
 
-    const candidates =
-      getSlide(i)
-        .map(j => base[j]?.name)
-        .filter(n => n && !used.has(n) && !absentSet.has(n)) ||
-      [];
-
-    const fixed =
-      getFixed(i)
-        .map(j => base[j]?.name)
-        .filter(n => n && !used.has(n) && !absentSet.has(n)) ||
-      [];
+    const candidates = [
+      ...getSlide(i).map(j => base[j]?.name),
+      ...getFixed(i).map(j => base[j]?.name)
+    ].filter(n => n && !used.has(n) && !absentSet.has(n));
 
     let picked = null;
 
-    // =========================
-    // STEP 2-1: 履歴最優先
-    // =========================
+    // 履歴最優先
     if (last && !used.has(last) && !absentSet.has(last)) {
       picked = last;
     }
 
-    // =========================
-    // STEP 2-2: スライド・固定
-    // =========================
+    // スライド・固定
     if (!picked) {
-      picked = candidates[0] || fixed[0] || null;
+      picked = candidates[0] || null;
     }
 
-    // =========================
-    // STEP 2-3: ⑰以降
-    // =========================
+    // ⑰以降
     if (!picked) {
       const extra = getExtraPool(base, used, absentSet);
       picked = extra[0] || null;
@@ -217,7 +196,7 @@ document.getElementById("assign-btn").addEventListener("click", () => {
 });
 
 // =======================
-// 表
+// 表（★ここだけ変更）
 // =======================
 function renderResult(res, base) {
 
@@ -237,12 +216,16 @@ function renderResult(res, base) {
 
   const tbody = table.querySelector("tbody");
 
+  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
+
   res.forEach((name, i) => {
 
     const tr = document.createElement("tr");
 
+    const posName = base[i]?.name || "";
+
     tr.innerHTML = `
-      <td>${["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"][i]}</td>
+      <td>${nums[i]} ${posName}ポジ</td>
       <td>${name || "-"}</td>
     `;
 
@@ -298,6 +281,7 @@ function buildMenu() {
 // メニュー開閉
 // =======================
 menuBtn?.addEventListener("click", () => {
+
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
