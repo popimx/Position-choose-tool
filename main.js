@@ -47,7 +47,7 @@ export function assign(absent, basePositions) {
     result[i] = result[cand];
     used.add(cand);
 
-    fill(cand); // 🔥 連鎖対応
+    fill(cand); // 🔥連鎖
   }
 
   for (let i = 0; i < 16; i++) {
