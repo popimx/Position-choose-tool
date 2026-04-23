@@ -2,18 +2,21 @@ import { teams } from "./data.js";
 import { assign, getNumber } from "./assign.js";
 
 // =======================
+// DOM取得
+// =======================
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
 const absentDiv = document.getElementById("absent-members");
 const resultDiv = document.getElementById("result");
 const listView = document.getElementById("list-view");
 
-let currentTeam = "teamA";
+let currentTeam = null;
 
 // =======================
-// 初期化
+// 初期化（重要：DOM読み込み後）
 // =======================
 window.addEventListener("DOMContentLoaded", () => {
+  currentTeam = teamSelect.value; // ←ここ重要
   renderMembers();
   renderAbsent();
 });
@@ -23,20 +26,19 @@ window.addEventListener("DOMContentLoaded", () => {
 // =======================
 teamSelect.addEventListener("change", (e) => {
   currentTeam = e.target.value;
-
   clearUI();
   renderMembers();
   renderAbsent();
 });
 
 // =======================
-// メンバー（表示順）
+// 出演メンバー表示
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
 
   const team = teams[currentTeam];
-  if (!team) return;
+  if (!team || !team.basePositions) return;
 
   team.basePositions.forEach(m => {
     const label = document.createElement("label");
@@ -51,13 +53,13 @@ function renderMembers() {
 }
 
 // =======================
-// 休演候補一覧（ここが重要）
+// 休演メンバー表示
 // =======================
 function renderAbsent() {
   absentDiv.innerHTML = "";
 
   const team = teams[currentTeam];
-  if (!team) return;
+  if (!team || !team.basePositions) return;
 
   team.basePositions.forEach(m => {
     const label = document.createElement("label");
@@ -72,7 +74,7 @@ function renderAbsent() {
 }
 
 // =======================
-// 割り当て実行
+// 割り当て
 // =======================
 document.getElementById("assign-btn").addEventListener("click", () => {
 
