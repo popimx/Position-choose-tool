@@ -100,7 +100,6 @@ function assign(absent, basePositions, history = []) {
 
   function getFixed(i) {
     const map = {
-      10: [16, 22],
       11: [17, 23],
       12: [18, 24, 29],
       13: [19, 25, 30],
