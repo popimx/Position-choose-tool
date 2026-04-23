@@ -1,7 +1,9 @@
 import { teams } from "./data.js";
 import { assign, getNumber } from "./main.js";
 
+// =======================
 // DOM
+// =======================
 const teamSelect = document.getElementById("team-select");
 const membersDiv = document.getElementById("members");
 const resultDiv = document.getElementById("result");
@@ -9,13 +11,17 @@ const jsonOutput = document.getElementById("json-output");
 
 let currentTeam = null;
 
+// =======================
 // 初期化
+// =======================
 window.addEventListener("DOMContentLoaded", () => {
   currentTeam = teamSelect.value;
   renderMembers();
 });
 
+// =======================
 // チーム変更
+// =======================
 teamSelect.addEventListener("change", (e) => {
   currentTeam = e.target.value;
   clearUI();
@@ -23,7 +29,7 @@ teamSelect.addEventListener("change", (e) => {
 });
 
 // =======================
-// メンバー表示
+// メンバー表示（横並び修正済）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -50,10 +56,8 @@ function renderMembers() {
 
       label.innerHTML = `
         <input type="checkbox" value="${name}">
-        ${name}
+        <span>${name}</span>
       `;
-
-      label.style.marginRight = "10px";
 
       div.appendChild(label);
     });
@@ -63,7 +67,7 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当て
+// 割り当て実行
 // =======================
 document.getElementById("assign-btn").addEventListener("click", () => {
 
@@ -111,7 +115,7 @@ function renderTable(res, base) {
 
     tr.innerHTML = `
       <td>${getNumber(i + 1)} ${base[i].name}ポジ</td>
-      <td>${name}</td>
+      <td>${name ?? "-"}</td>
     `;
 
     tbody.appendChild(tr);
