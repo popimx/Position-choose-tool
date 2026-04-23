@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>履歴</title>
+</head>
+<body>
+
+<h2>履歴</h2>
+<div id="history"></div>
+
+<script type="module">
+import { loadData } from "./storage.js";
+
+const data = loadData();
+const container = document.getElementById("history");
+
+data.forEach(d => {
+  const div = document.createElement("div");
+
+  div.innerHTML = `
+    <h3>${d.date} ${d.stage}</h3>
+    <pre>${JSON.stringify(d.positions, null, 2)}</pre>
+  `;
+
+  container.appendChild(div);
+});
+</script>
+
+</body>
+</html>
