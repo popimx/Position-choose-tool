@@ -42,7 +42,7 @@ teamSelect.addEventListener("change", (e) => {
 });
 
 // =======================
-// メンバー表示（4列）
+// メンバー表示（4列・安全版）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -50,12 +50,19 @@ function renderMembers() {
   const team = teams[currentTeam];
   if (!team) return;
 
-  team.customOrder.forEach(name => {
+  // 🔥 customOrderが無くても動く
+  const list =
+    team.customOrder && team.customOrder.length > 0
+      ? team.customOrder
+      : team.basePositions.map(p => p.name);
+
+  list.forEach(name => {
     const label = document.createElement("label");
 
     label.style.display = "inline-block";
-    label.style.width = "25%"; // ←4列
+    label.style.width = "25%";
     label.style.marginBottom = "8px";
+    label.style.verticalAlign = "top";
 
     label.innerHTML = `
       <input type="checkbox" value="${name}">
@@ -67,7 +74,7 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当てロジック（統合版）
+// ポジション割り当て
 // =======================
 function assign(absent, basePositions, history = []) {
 
@@ -136,7 +143,6 @@ function assign(absent, basePositions, history = []) {
 
     if (candidates.length === 0) return null;
 
-    // ローテーション
     if (last && candidates.includes(last)) {
       const idx = candidates.indexOf(last);
       return candidates[(idx + 1) % candidates.length];
@@ -146,7 +152,7 @@ function assign(absent, basePositions, history = []) {
   }
 
   // =========================
-  // フォールバック（⑰以降）
+  // フォールバック
   // =========================
   function fallback(posIndex) {
 
@@ -171,7 +177,7 @@ function assign(absent, basePositions, history = []) {
   }
 
   // =========================
-  // 連鎖 fill
+  // 連鎖
   // =========================
   function fill(i) {
 
@@ -187,12 +193,12 @@ function assign(absent, basePositions, history = []) {
 
     const nextIndex = basePositions.findIndex(p => p.name === name);
     if (nextIndex !== -1) {
-      fill(nextIndex); // 🔥連鎖
+      fill(nextIndex);
     }
   }
 
   // =========================
-  // メイン処理（①〜⑯）
+  // メイン処理
   // =========================
   for (let i = 0; i < 16; i++) {
 
@@ -232,7 +238,6 @@ function renderResult(res, base) {
 
   resultDiv.innerHTML = "";
 
-  // ===== 表 =====
   const table = document.createElement("table");
 
   table.innerHTML = `
@@ -260,7 +265,6 @@ function renderResult(res, base) {
 
   resultDiv.appendChild(table);
 
-  // ===== JSON =====
   const json = document.createElement("pre");
 
   json.textContent = JSON.stringify({
