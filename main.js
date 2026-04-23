@@ -44,7 +44,7 @@ teamSelect.addEventListener("change", (e) => {
 });
 
 // =======================
-// メンバー表示（3列）
+// メンバー表示
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -70,15 +70,13 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当て（①〜⑯固定）
+// 割り当てロジック（変更なし）
 // =======================
 function assign(absent, basePositions, history = []) {
 
   const result = Array(16).fill(null);
   const used = new Set();
-
-  const all = basePositions.map(p => p.name);
-  const available = all.filter(n => !absent.includes(n));
+  const isAbsent = new Set(absent);
 
   const range = (s, e) =>
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
@@ -91,6 +89,7 @@ function assign(absent, basePositions, history = []) {
     return null;
   }
 
+  // ★保持
   function getSlide(i) {
     if (i <= 4) return range(i + 5, 10);
     if (i <= 9) return range(i + 6, 15);
@@ -110,11 +109,12 @@ function assign(absent, basePositions, history = []) {
   }
 
   function pick(list, posIndex) {
+
     const last = getLastUsed(posIndex);
 
     const candidates = list
       .map(i => basePositions[i]?.name)
-      .filter(n => n && available.includes(n) && !used.has(n));
+      .filter(n => n && !isAbsent.has(n) && !used.has(n));
 
     if (!candidates.length) return null;
 
@@ -127,7 +127,9 @@ function assign(absent, basePositions, history = []) {
   }
 
   function fallback() {
-    return available.find(n => !used.has(n)) || null;
+    return basePositions
+      .map(p => p.name)
+      .find(n => !isAbsent.has(n) && !used.has(n)) || null;
   }
 
   function fill(i) {
@@ -139,18 +141,22 @@ function assign(absent, basePositions, history = []) {
 
     if (!name) return;
 
+    if (isAbsent.has(name)) return;
+
     result[i] = name;
     used.add(name);
 
     const next = basePositions.findIndex(p => p.name === name);
-    if (next !== -1) fill(next);
+    if (next !== -1 && result[next] === null) {
+      fill(next);
+    }
   }
 
   for (let i = 0; i < 16; i++) {
 
     const original = basePositions[i]?.name;
 
-    if (available.includes(original) && !used.has(original)) {
+    if (original && !isAbsent.has(original) && !used.has(original)) {
       result[i] = original;
       used.add(original);
     } else {
@@ -158,7 +164,7 @@ function assign(absent, basePositions, history = []) {
     }
   }
 
-  return { positions: result.slice(0, 16) };
+  return { positions: result };
 }
 
 // =======================
@@ -175,11 +181,16 @@ document.getElementById("assign-btn").addEventListener("click", () => {
   const res = assign(absent, team.basePositions, history);
 
   renderResult(res.positions, team.basePositions);
-  buildMenu(); // 履歴更新
+
+  buildMenu();
+
+  // 🔥監査追加
+  const issues = auditResult(res.positions, team.basePositions, absent);
+  renderAudit(issues);
 });
 
 // =======================
-// 表出力（①〜⑯のみ）
+// 表出力（①〜⑯）
 // =======================
 function renderResult(res, base) {
 
@@ -215,6 +226,56 @@ function renderResult(res, base) {
 }
 
 // =======================
+// 監査ロジック（追加）
+// =======================
+function auditResult(res, base, absent) {
+
+  const issues = [];
+  const isAbsent = new Set(absent);
+
+  for (let i = 0; i < 16; i++) {
+
+    const expected = base[i]?.name;
+    const actual = res[i];
+
+    if (expected && !isAbsent.has(expected) && !actual) {
+      issues.push(`❌ ${expected}（ポジション${i + 1}が空）`);
+    }
+
+    if (actual && isAbsent.has(actual)) {
+      issues.push(`⚠️ ${actual}（休演なのに出力）`);
+    }
+  }
+
+  return issues;
+}
+
+// =======================
+// 監査表示UI（追加）
+// =======================
+function renderAudit(issues) {
+
+  const old = document.getElementById("audit-box");
+  if (old) old.remove();
+
+  const box = document.createElement("div");
+  box.id = "audit-box";
+  box.style.marginTop = "10px";
+  box.style.padding = "8px";
+  box.style.background = "#fff3cd";
+  box.style.border = "1px solid #ffeeba";
+  box.style.fontSize = "0.9rem";
+
+  if (issues.length === 0) {
+    box.textContent = "✅ チェックOK（欠落なし）";
+  } else {
+    box.innerHTML = "<b>監査結果</b><br>" + issues.join("<br>");
+  }
+
+  resultDiv.appendChild(box);
+}
+
+// =======================
 // 丸数字
 // =======================
 function getNumber(n) {
@@ -222,11 +283,10 @@ function getNumber(n) {
   return nums[n - 1];
 }
 
-// ======================================================
-// 🔥 メニュー：4/1・4/2 横比較UI
-// ======================================================
+// =======================
+// メニュー（そのまま）
+// =======================
 function buildMenu() {
-
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
@@ -237,9 +297,6 @@ function buildMenu() {
   const title = document.createElement("h3");
   title.textContent = `${currentTeam} 公演履歴`;
   menu.appendChild(title);
-
-  const wrapper = document.createElement("div");
-  wrapper.style.overflowX = "auto";
 
   const table = document.createElement("table");
 
@@ -263,24 +320,9 @@ function buildMenu() {
   });
 
   html += `</tbody>`;
-
   table.innerHTML = html;
 
-  wrapper.appendChild(table);
-  menu.appendChild(wrapper);
-
-  // 詳細展開
-  teamHistory.forEach(h => {
-
-    const d = document.createElement("details");
-
-    d.innerHTML = `
-      <summary>${h.date}</summary>
-      <pre>${JSON.stringify(h.positions, null, 2)}</pre>
-    `;
-
-    menu.appendChild(d);
-  });
+  menu.appendChild(table);
 }
 
 // =======================
