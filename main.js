@@ -22,7 +22,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // =======================
-// 履歴
+// 履歴読み込み
 // =======================
 async function loadHistory() {
   try {
@@ -70,7 +70,14 @@ function renderMembers() {
 }
 
 // =======================
-// 履歴取得
+// util
+// =======================
+function range(s, e) {
+  return Array.from({ length: e - s + 1 }, (_, i) => i + s);
+}
+
+// =======================
+// 履歴取得（ポジション単位）
 // =======================
 function lastUsed(posIndex) {
   for (let i = history.length - 1; i >= 0; i--) {
@@ -105,40 +112,12 @@ function getFixed(i) {
 }
 
 // =======================
-// range
+// ⑰以降（fallback専用）
 // =======================
-function range(s, e) {
-  return Array.from({ length: e - s + 1 }, (_, i) => i + s);
-}
-
-// =======================
-// ★ここが修正の核心（安全候補生成）
-// =======================
-function pick(indexList, base, used, absentSet, posIndex) {
-
-  const candidates = indexList
-    .map(i => base[i]?.name)
-    .filter(n => n && !absentSet.has(n) && !used.has(n));
-
-  if (!candidates.length) return null;
-
-  const last = lastUsed(posIndex);
-
-  // 履歴は“優先だけど強制しない”
-  if (last && candidates.includes(last)) {
-    return last;
-  }
-
-  return candidates[0];
-}
-
-// =======================
-// fallback（完全安全）
-// =======================
-function fallback(base, used, absentSet) {
+function getExtraPool(base, used, absentSet) {
   return base
     .map(p => p.name)
-    .find(n => !absentSet.has(n) && !used.has(n)) || null;
+    .filter(n => !used.has(n) && !absentSet.has(n));
 }
 
 // =======================
@@ -150,38 +129,71 @@ function assign(absent, base) {
   const used = new Set();
   const absentSet = new Set(absent);
 
+  const baseNames = base.map(p => p.name);
+
+  // =========================
+  // STEP 1: ベース固定（①〜⑯）
+  // =========================
   for (let i = 0; i < 16; i++) {
 
-    const original = base[i]?.name;
+    const name = base[i]?.name;
 
-    // =========================
-    // ① 休演は絶対に除外（最優先）
-    // =========================
-    if (absentSet.has(original)) {
-      result[i] = null;
+    if (!name || absentSet.has(name)) {
       continue;
     }
 
+    result[i] = name;
+    used.add(name);
+  }
+
+  // =========================
+  // STEP 2: 空き枠処理
+  // =========================
+  for (let i = 0; i < 16; i++) {
+
+    if (result[i]) continue;
+
+    const last = lastUsed(i);
+
+    const candidates =
+      getSlide(i)
+        .map(j => base[j]?.name)
+        .filter(n => n && !used.has(n) && !absentSet.has(n)) ||
+      [];
+
+    const fixed =
+      getFixed(i)
+        .map(j => base[j]?.name)
+        .filter(n => n && !used.has(n) && !absentSet.has(n)) ||
+      [];
+
+    let picked = null;
+
     // =========================
-    // ② ベース優先
+    // STEP 2-1: 履歴最優先
     // =========================
-    if (original && !used.has(original)) {
-      result[i] = original;
-      used.add(original);
-      continue;
+    if (last && !used.has(last) && !absentSet.has(last)) {
+      picked = last;
     }
 
     // =========================
-    // ③ 履歴・スライド・固定
+    // STEP 2-2: スライド・固定
     // =========================
-    const name =
-      pick(getSlide(i), base, used, absentSet, i) ??
-      pick(getFixed(i), base, used, absentSet, i) ??
-      fallback(base, used, absentSet);
+    if (!picked) {
+      picked = candidates[0] || fixed[0] || null;
+    }
 
-    if (name) {
-      result[i] = name;
-      used.add(name);
+    // =========================
+    // STEP 2-3: ⑰以降
+    // =========================
+    if (!picked) {
+      const extra = getExtraPool(base, used, absentSet);
+      picked = extra[0] || null;
+    }
+
+    if (picked) {
+      result[i] = picked;
+      used.add(picked);
     }
   }
 
@@ -230,7 +242,7 @@ function renderResult(res, base) {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${getNumber(i + 1)} ${base[i]?.name}</td>
+      <td>${["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"][i]}</td>
       <td>${name || "-"}</td>
     `;
 
@@ -238,14 +250,6 @@ function renderResult(res, base) {
   });
 
   resultDiv.appendChild(table);
-}
-
-// =======================
-// 丸数字
-// =======================
-function getNumber(n) {
-  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
-  return nums[n - 1];
 }
 
 // =======================
@@ -294,7 +298,6 @@ function buildMenu() {
 // メニュー開閉
 // =======================
 menuBtn?.addEventListener("click", () => {
-
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
