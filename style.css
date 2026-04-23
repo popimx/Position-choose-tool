@@ -49,15 +49,24 @@ label {
   box-sizing: border-box;
 }
 
-/* メンバー */
+/* メンバー行 */
 #members div {
+  display: flex;
+  flex-wrap: wrap;
   margin-bottom: 6px;
 }
 
+/* チェック横並び */
 #members label {
-  display: inline-block;
-  margin-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
   font-weight: normal;
+}
+
+#members input[type="checkbox"] {
+  margin: 0;
 }
 
 /* ボタン */
