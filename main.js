@@ -22,7 +22,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // =======================
-// 履歴読み込み
+// 履歴
 // =======================
 async function loadHistory() {
   try {
@@ -36,15 +36,15 @@ async function loadHistory() {
 // =======================
 // チーム変更
 // =======================
-teamSelect.addEventListener("change", (e) => {
-  currentTeam = e.target.value;
+teamSelect.addEventListener("change", () => {
+  currentTeam = teamSelect.value;
   renderMembers();
   resultDiv.innerHTML = "";
   buildMenu();
 });
 
 // =======================
-// メンバー表示
+// メンバーUI（3列固定）
 // =======================
 function renderMembers() {
   membersDiv.innerHTML = "";
@@ -70,32 +70,42 @@ function renderMembers() {
 }
 
 // =======================
-// 割り当てロジック（変更なし）
+// ルール本体（安定版）
 // =======================
-function assign(absent, basePositions, history = []) {
+function assign(absent, base, history = []) {
 
   const result = Array(16).fill(null);
   const used = new Set();
-  const isAbsent = new Set(absent);
+  const absentSet = new Set(absent);
+
+  const names = base.map(p => p.name);
 
   const range = (s, e) =>
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
 
-  function getLastUsed(posIndex) {
+  // =========================
+  // 履歴参照
+  // =========================
+  function lastUsed(posIndex) {
     for (let i = history.length - 1; i >= 0; i--) {
-      const name = history[i]?.positions?.[posIndex];
-      if (name) return name;
+      const v = history[i]?.positions?.[posIndex];
+      if (v) return v;
     }
     return null;
   }
 
-  // ★保持
+  // =========================
+  // スライド（保持）
+  // =========================
   function getSlide(i) {
     if (i <= 4) return range(i + 5, 10);
     if (i <= 9) return range(i + 6, 15);
     return [];
   }
 
+  // =========================
+  // 固定（保持）
+  // =========================
   function getFixed(i) {
     const map = {
       11: [17, 23],
@@ -108,59 +118,70 @@ function assign(absent, basePositions, history = []) {
     return map[i] || [];
   }
 
-  function pick(list, posIndex) {
+  // =========================
+  // 候補生成（超重要）
+  // =========================
+  function buildCandidates(indexList, posIndex) {
 
-    const last = getLastUsed(posIndex);
+    const last = lastUsed(posIndex);
 
-    const candidates = list
-      .map(i => basePositions[i]?.name)
-      .filter(n => n && !isAbsent.has(n) && !used.has(n));
+    const list = indexList
+      .map(i => base[i]?.name)
+      .filter(n =>
+        n &&
+        !absentSet.has(n) &&
+        !used.has(n)
+      );
 
-    if (!candidates.length) return null;
+    if (!list.length) return null;
 
-    if (last && candidates.includes(last)) {
-      const idx = candidates.indexOf(last);
-      return candidates[(idx + 1) % candidates.length];
+    // 履歴優先
+    if (last && list.includes(last)) {
+      const i = list.indexOf(last);
+      return list[(i + 1) % list.length];
     }
 
-    return candidates[0];
+    return list[0];
   }
 
+  // =========================
+  // fallback（暴走防止版）
+  // =========================
   function fallback() {
-    return basePositions
-      .map(p => p.name)
-      .find(n => !isAbsent.has(n) && !used.has(n)) || null;
+    return names.find(n => !absentSet.has(n) && !used.has(n)) || null;
   }
 
-  function fill(i) {
+  // =========================
+  // 1ポジション確定（再帰禁止）
+  // =========================
+  function resolve(i) {
 
     const name =
-      pick(getSlide(i), i) ??
-      pick(getFixed(i), i) ??
+      buildCandidates(getSlide(i), i) ??
+      buildCandidates(getFixed(i), i) ??
       fallback();
 
-    if (!name) return;
-
-    if (isAbsent.has(name)) return;
-
-    result[i] = name;
-    used.add(name);
-
-    const next = basePositions.findIndex(p => p.name === name);
-    if (next !== -1 && result[next] === null) {
-      fill(next);
-    }
+    return name;
   }
 
+  // =========================
+  // メイン
+  // =========================
   for (let i = 0; i < 16; i++) {
 
-    const original = basePositions[i]?.name;
+    const original = base[i]?.name;
 
-    if (original && !isAbsent.has(original) && !used.has(original)) {
+    if (original && !absentSet.has(original) && !used.has(original)) {
       result[i] = original;
       used.add(original);
-    } else {
-      fill(i);
+      continue;
+    }
+
+    const name = resolve(i);
+
+    if (name) {
+      result[i] = name;
+      used.add(name);
     }
   }
 
@@ -172,25 +193,19 @@ function assign(absent, basePositions, history = []) {
 // =======================
 document.getElementById("assign-btn").addEventListener("click", () => {
 
-  const team = teams[currentTeam];
-  if (!team) return;
+  const base = teams[currentTeam].basePositions;
 
   const absent = [...document.querySelectorAll("#members input:checked")]
-    .map(el => el.value);
+    .map(e => e.value);
 
-  const res = assign(absent, team.basePositions, history);
+  const res = assign(absent, base, history);
 
-  renderResult(res.positions, team.basePositions);
-
+  renderResult(res.positions, base);
   buildMenu();
-
-  // 🔥監査追加
-  const issues = auditResult(res.positions, team.basePositions, absent);
-  renderAudit(issues);
 });
 
 // =======================
-// 表出力（①〜⑯）
+// 表
 // =======================
 function renderResult(res, base) {
 
@@ -210,12 +225,12 @@ function renderResult(res, base) {
 
   const tbody = table.querySelector("tbody");
 
-  res.slice(0, 16).forEach((name, i) => {
+  res.forEach((name, i) => {
 
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${getNumber(i + 1)} ${base[i]?.name || ""}</td>
+      <td>${getNumber(i + 1)} ${base[i]?.name}</td>
       <td>${name || "-"}</td>
     `;
 
@@ -223,56 +238,6 @@ function renderResult(res, base) {
   });
 
   resultDiv.appendChild(table);
-}
-
-// =======================
-// 監査ロジック（追加）
-// =======================
-function auditResult(res, base, absent) {
-
-  const issues = [];
-  const isAbsent = new Set(absent);
-
-  for (let i = 0; i < 16; i++) {
-
-    const expected = base[i]?.name;
-    const actual = res[i];
-
-    if (expected && !isAbsent.has(expected) && !actual) {
-      issues.push(`❌ ${expected}（ポジション${i + 1}が空）`);
-    }
-
-    if (actual && isAbsent.has(actual)) {
-      issues.push(`⚠️ ${actual}（休演なのに出力）`);
-    }
-  }
-
-  return issues;
-}
-
-// =======================
-// 監査表示UI（追加）
-// =======================
-function renderAudit(issues) {
-
-  const old = document.getElementById("audit-box");
-  if (old) old.remove();
-
-  const box = document.createElement("div");
-  box.id = "audit-box";
-  box.style.marginTop = "10px";
-  box.style.padding = "8px";
-  box.style.background = "#fff3cd";
-  box.style.border = "1px solid #ffeeba";
-  box.style.fontSize = "0.9rem";
-
-  if (issues.length === 0) {
-    box.textContent = "✅ チェックOK（欠落なし）";
-  } else {
-    box.innerHTML = "<b>監査結果</b><br>" + issues.join("<br>");
-  }
-
-  resultDiv.appendChild(box);
 }
 
 // =======================
@@ -284,15 +249,16 @@ function getNumber(n) {
 }
 
 // =======================
-// メニュー（そのまま）
+// メニュー（簡易安定版）
 // =======================
 function buildMenu() {
+
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
   menu.innerHTML = "";
 
-  const teamHistory = history.filter(h => h.stage === currentTeam);
+  const data = history.filter(h => h.stage === currentTeam);
 
   const title = document.createElement("h3");
   title.textContent = `${currentTeam} 公演履歴`;
@@ -300,28 +266,27 @@ function buildMenu() {
 
   const table = document.createElement("table");
 
-  const dates = teamHistory.map(h => h.date);
-
   let html = `<thead><tr><th>メンバー</th>`;
-  dates.forEach(d => html += `<th>${d}</th>`);
+
+  data.forEach(d => html += `<th>${d.date}</th>`);
   html += `</tr></thead><tbody>`;
 
-  const base = teams[currentTeam]?.basePositions || [];
+  const base = teams[currentTeam].basePositions;
 
   base.slice(0, 16).forEach((p, i) => {
 
     html += `<tr><td>${p.name}</td>`;
 
-    teamHistory.forEach(h => {
-      html += `<td>${h.positions[i] || "-"}</td>`;
+    data.forEach(d => {
+      html += `<td>${d.positions[i] || "-"}</td>`;
     });
 
     html += `</tr>`;
   });
 
   html += `</tbody>`;
-  table.innerHTML = html;
 
+  table.innerHTML = html;
   menu.appendChild(table);
 }
 
@@ -329,6 +294,7 @@ function buildMenu() {
 // メニュー開閉
 // =======================
 menuBtn?.addEventListener("click", () => {
+
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
