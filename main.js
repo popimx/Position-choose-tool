@@ -70,125 +70,114 @@ function renderMembers() {
 }
 
 // =======================
-// ルール本体（完全安定版）
+// 履歴取得
 // =======================
-function assign(absent, base, history = []) {
+function lastUsed(posIndex) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const v = history[i]?.positions?.[posIndex];
+    if (v) return v;
+  }
+  return null;
+}
+
+// =======================
+// スライド
+// =======================
+function getSlide(i) {
+  if (i <= 4) return range(i + 5, 10);
+  if (i <= 9) return range(i + 6, 15);
+  return [];
+}
+
+// =======================
+// 固定
+// =======================
+function getFixed(i) {
+  const map = {
+    11: [17, 23],
+    12: [18, 24, 29],
+    13: [19, 25, 30],
+    14: [20, 26, 31],
+    15: [21, 27, 32],
+    16: [22, 28, 33]
+  };
+  return map[i] || [];
+}
+
+// =======================
+// range
+// =======================
+function range(s, e) {
+  return Array.from({ length: e - s + 1 }, (_, i) => i + s);
+}
+
+// =======================
+// ★ここが修正の核心（安全候補生成）
+// =======================
+function pick(indexList, base, used, absentSet, posIndex) {
+
+  const candidates = indexList
+    .map(i => base[i]?.name)
+    .filter(n => n && !absentSet.has(n) && !used.has(n));
+
+  if (!candidates.length) return null;
+
+  const last = lastUsed(posIndex);
+
+  // 履歴は“優先だけど強制しない”
+  if (last && candidates.includes(last)) {
+    return last;
+  }
+
+  return candidates[0];
+}
+
+// =======================
+// fallback（完全安全）
+// =======================
+function fallback(base, used, absentSet) {
+  return base
+    .map(p => p.name)
+    .find(n => !absentSet.has(n) && !used.has(n)) || null;
+}
+
+// =======================
+// 割り当て本体
+// =======================
+function assign(absent, base) {
 
   const result = Array(16).fill(null);
   const used = new Set();
   const absentSet = new Set(absent);
 
-  const names = base.map(p => p.name);
-
-  const range = (s, e) =>
-    Array.from({ length: e - s + 1 }, (_, i) => i + s);
-
-  // =========================
-  // 履歴取得
-  // =========================
-  function lastUsed(posIndex) {
-    for (let i = history.length - 1; i >= 0; i--) {
-      const v = history[i]?.positions?.[posIndex];
-      if (v) return v;
-    }
-    return null;
-  }
-
-  // =========================
-  // スライド
-  // =========================
-  function getSlide(i) {
-    if (i <= 4) return range(i + 5, 10);
-    if (i <= 9) return range(i + 6, 15);
-    return [];
-  }
-
-  // =========================
-  // 固定
-  // =========================
-  function getFixed(i) {
-    const map = {
-      11: [17, 23],
-      12: [18, 24, 29],
-      13: [19, 25, 30],
-      14: [20, 26, 31],
-      15: [21, 27, 32],
-      16: [22, 28, 33]
-    };
-    return map[i] || [];
-  }
-
-  // =========================
-  // 候補生成（休演完全除外）
-  // =========================
-  function buildCandidates(list, posIndex) {
-
-    const last = lastUsed(posIndex);
-
-    const candidates = list
-      .map(i => base[i]?.name)
-      .filter(n =>
-        n &&
-        !absentSet.has(n) &&
-        !used.has(n)
-      );
-
-    if (!candidates.length) return null;
-
-    // 履歴は「優先」だが強制ではない
-    if (last && candidates.includes(last)) {
-      return last;
-    }
-
-    return candidates[0];
-  }
-
-  // =========================
-  // fallback
-  // =========================
-  function fallback() {
-    return names.find(n =>
-      !absentSet.has(n) &&
-      !used.has(n)
-    ) || null;
-  }
-
-  // =========================
-  // 1ポジ確定
-  // =========================
-  function resolve(i) {
-
-    return (
-      buildCandidates(getSlide(i), i) ??
-      buildCandidates(getFixed(i), i) ??
-      fallback()
-    );
-  }
-
-  // =========================
-  // メイン
-  // =========================
   for (let i = 0; i < 16; i++) {
 
     const original = base[i]?.name;
 
-    // ①休演は絶対優先（完全除外）
+    // =========================
+    // ① 休演は絶対に除外（最優先）
+    // =========================
     if (absentSet.has(original)) {
       result[i] = null;
       continue;
     }
 
-    // ②履歴優先（ただし休演は除外済み）
-    const hist = lastUsed(i);
-
-    if (hist && !absentSet.has(hist) && !used.has(hist)) {
-      result[i] = hist;
-      used.add(hist);
+    // =========================
+    // ② ベース優先
+    // =========================
+    if (original && !used.has(original)) {
+      result[i] = original;
+      used.add(original);
       continue;
     }
 
-    // ③通常ロジック
-    const name = resolve(i);
+    // =========================
+    // ③ 履歴・スライド・固定
+    // =========================
+    const name =
+      pick(getSlide(i), base, used, absentSet, i) ??
+      pick(getFixed(i), base, used, absentSet, i) ??
+      fallback(base, used, absentSet);
 
     if (name) {
       result[i] = name;
@@ -209,7 +198,7 @@ document.getElementById("assign-btn").addEventListener("click", () => {
   const absent = [...document.querySelectorAll("#members input:checked")]
     .map(e => e.value);
 
-  const res = assign(absent, base, history);
+  const res = assign(absent, base);
 
   renderResult(res.positions, base);
   buildMenu();
