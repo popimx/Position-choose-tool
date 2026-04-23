@@ -1,8 +1,12 @@
-import { basePositions } from "./data.js";
+export function assign(absent, basePositions) {
 
-export function assign(absent) {
-  const used = new Set();
+  // =========================
+  // ① 初期化
+  // =========================
   const result = basePositions.map(p => p.name);
+
+  const usedCount = new Map(); // 使用回数管理（重要）
+  const assignedFrom = new Map(); // どこから来たか記録
 
   // 休演処理
   for (let i = 0; i < result.length; i++) {
@@ -11,22 +15,39 @@ export function assign(absent) {
     }
   }
 
+  // =========================
+  // ② ユーティリティ
+  // =========================
   const range = (s, e) =>
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
 
-  function find(list) {
-    return list.find(i =>
-      result[i] &&
-      !used.has(i)
-    );
+  const addCount = (i) => {
+    usedCount.set(i, (usedCount.get(i) || 0) + 1);
+  };
+
+  const getCount = (i) => usedCount.get(i) || 0;
+
+  // =========================
+  // ③ 候補検索（重複なし）
+  // =========================
+  function findBest(list) {
+    return list
+      .filter(i => result[i] && !usedCount.has(i))
+      .sort((a, b) => getCount(a) - getCount(b))[0];
   }
 
+  // =========================
+  // ④ スライドルール
+  // =========================
   function getSlide(i) {
     if (i <= 4) return range(i + 5, 10);
     if (i <= 9) return range(i + 6, 15);
     return [];
   }
 
+  // =========================
+  // ⑤ 固定ルール
+  // =========================
   function getFixed(i) {
     const map = {
       10: [16, 22],
@@ -40,30 +61,48 @@ export function assign(absent) {
     return map[i] || [];
   }
 
-  function pickLeastUsed(list) {
-    return list.find(i => result[i]);
+  // =========================
+  // ⑥ フォールバック（⑰以降）
+  // =========================
+  function getFallback() {
+    return range(16, result.length - 1);
   }
 
+  // =========================
+  // ⑦ 割り当て本体
+  // =========================
   function fill(i) {
+
     const cand =
-      find(getSlide(i)) ??
-      find(getFixed(i)) ??
-      pickLeastUsed(range(16, result.length - 1));
+      findBest(getSlide(i)) ??
+      findBest(getFixed(i)) ??
+      findBest(getFallback());
 
     if (cand === undefined) return;
 
     result[i] = result[cand];
-    used.add(cand);
+
+    addCount(cand);
+    assignedFrom.set(i, cand);
   }
 
+  // =========================
+  // ⑧ 実行（①〜⑯）
+  // =========================
   for (let i = 0; i < 16; i++) {
-    if (!result[i]) fill(i);
+    if (!result[i]) {
+      fill(i);
+    }
   }
 
-  return result.slice(0, 16);
-}
-
-export function getNumber(n) {
-  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
-  return nums[n - 1];
+  // =========================
+  // ⑨ 結果返却
+  // =========================
+  return {
+    positions: result.slice(0, 16),
+    debug: {
+      usedCount: Object.fromEntries(usedCount),
+      assignedFrom: Object.fromEntries(assignedFrom)
+    }
+  };
 }
