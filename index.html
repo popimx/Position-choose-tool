@@ -4,32 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>劇場公演 ポジション割り当てツール</title>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
   <header>
-    <h1>劇場公演 ポジション割り当てツール</h1>
+    <h1>劇場公演 ポジションツール</h1>
   </header>
 
-  <button id="menu-btn">ポジション一覧</button>
+  <!-- ======================
+       メニューボタン
+  ======================= -->
+  <button id="menu-btn">📋 ポジション一覧</button>
 
-  <label>チーム</label>
+  <!-- ======================
+       チーム選択
+  ======================= -->
+  <label for="team-select">チーム</label>
   <select id="team-select">
     <option value="teamA">チームA</option>
+    <option value="teamB">チームB</option>
   </select>
 
-  <label>日付</label>
+  <!-- ======================
+       日付
+  ======================= -->
+  <label for="date">日付</label>
   <input type="date" id="date" />
 
+  <!-- ======================
+       休演メンバー
+  ======================= -->
   <label>休演メンバー</label>
   <div id="members"></div>
 
+  <!-- ======================
+       実行ボタン
+  ======================= -->
   <button id="assign-btn">割り当て開始</button>
 
+  <!-- ======================
+       結果表示
+  ======================= -->
   <section id="result"></section>
+
+  <!-- ======================
+       一覧表示（メニュー用）
+  ======================= -->
   <section id="list-view" style="display:none;"></section>
 
+  <!-- ======================
+       JS（module必須）
+  ======================= -->
   <script type="module" src="./app.js"></script>
 </body>
 </html>
