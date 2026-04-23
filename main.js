@@ -1,46 +1,39 @@
 // =======================
-// ポジション割り当て
+// ポジション割り当て（①始まり版）
 // =======================
 export function assign(absent, basePositions) {
 
-  // 全メンバー
-  const all = basePositions.map(p => p.name);
+  // 名前配列（1始まり用にダミー追加）
+  const names = [null, ...basePositions.map(p => p.name)];
 
-  // 出演可能メンバー（＝全員 − 休演）
-  const available = all.filter(name => !absent.includes(name));
+  // 出演可能
+  const available = names.filter(n => n && !absent.includes(n));
 
   // 結果（①〜⑯）
-  const result = Array(16).fill(null);
+  const result = Array(17).fill(null);
 
-  // 使用済み管理
   const used = new Set();
 
-  // index取得用
-  const indexMap = new Map();
-  basePositions.forEach((p, i) => {
-    indexMap.set(p.name, i);
-  });
-
-  // 範囲生成
+  // 範囲（①始まり）
   const range = (s, e) =>
     Array.from({ length: e - s + 1 }, (_, i) => i + s);
 
   // 候補検索
   function find(list) {
     return list.find(i => {
-      const name = basePositions[i]?.name;
+      const name = names[i];
       return name && available.includes(name) && !used.has(name);
     });
   }
 
-  // スライドルール
+  // スライド
   function getSlide(i) {
-    if (i <= 4) return range(i + 5, 10);
-    if (i <= 9) return range(i + 6, 15);
+    if (i <= 5) return range(i + 5, 10);
+    if (i <= 10) return range(i + 6, 15);
     return [];
   }
 
-  // 固定ルール
+  // 固定
   function getFixed(i) {
     const map = {
       11: [17, 23],
@@ -53,32 +46,32 @@ export function assign(absent, basePositions) {
     return map[i] || [];
   }
 
-  // 割り当て処理（連鎖対応）
+  // 割り当て
   function fill(i) {
 
     const cand =
       find(getSlide(i)) ??
       find(getFixed(i)) ??
-      find(range(16, basePositions.length - 1));
+      find(range(17, names.length - 1));
 
-    if (cand === undefined) return;
+    if (!cand) return;
 
-    const name = basePositions[cand].name;
+    const name = names[cand];
 
     result[i] = name;
     used.add(name);
 
-    fill(cand); // 🔥 連鎖
+    // ①〜⑯だけ連鎖
+    if (cand <= 16 && !result[cand]) {
+      fill(cand);
+    }
   }
 
-  // =======================
-  // メイン処理（①〜⑯）
-  // =======================
-  for (let i = 0; i < 16; i++) {
+  // メイン
+  for (let i = 1; i <= 16; i++) {
 
-    const original = basePositions[i].name;
+    const original = names[i];
 
-    // 本人が出演できる場合
     if (available.includes(original) && !used.has(original)) {
       result[i] = original;
       used.add(original);
@@ -87,11 +80,9 @@ export function assign(absent, basePositions) {
     }
   }
 
-  // =======================
-  // 返却
-  // =======================
+  // ①〜⑯だけ返す
   return {
-    positions: result
+    positions: result.slice(1, 17)
   };
 }
 
