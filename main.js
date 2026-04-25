@@ -77,52 +77,50 @@ function range(s, e) {
 }
 
 // =======================
-// 履歴候補取得（拡張）
+// 履歴取得
 // =======================
-function getHistoryCandidates(i, base) {
-
-  const targets = [
-    i,
-    ...getSlide(i),
-    ...getFixed(i)
-  ];
-
-  const list = [];
-
-  for (let h = history.length - 1; h >= 0; h--) {
-    const perf = history[h];
-
-    targets.forEach(t => {
-      const name = perf?.positions?.[t];
-      if (name) list.push(name);
-    });
+function lastUsed(posIndex) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const v = history[i]?.positions?.[posIndex];
+    if (v) return v;
   }
-
-  return list;
+  return null;
 }
 
 // =======================
-// スライド
+// ★連鎖スライド（1〜33表記）
 // =======================
-function getSlide(i) {
-  if (i <= 4) return range(i + 5, 10);
-  if (i <= 9) return range(i + 6, 15);
-  return [];
-}
-
-// =======================
-// 固定
-// =======================
-function getFixed(i) {
+function getChainSlide(pos) {
   const map = {
-    11: [17, 23],
-    12: [18, 24, 29],
-    13: [19, 25, 30],
-    14: [20, 26, 31],
-    15: [21, 27, 32],
-    16: [22, 28, 33]
+    1: [6,7,8,9,10,11,12,13,14,15,16],
+    2: [7,8,9,10,11,12,13,14,15,16],
+    3: [8,9,10,11,12,13,14,15,16],
+    4: [9,10,11,12,13,14,15,16],
+    5: [10,11,12,13,14,15,16],
+    6: [12,13,14,15,16],
+    7: [13,14,15,16],
+    8: [14,15,16],
+    9: [15,16],
+    10:[16]
   };
-  return map[i] || [];
+
+  return (map[pos] || []).map(p => p - 1);
+}
+
+// =======================
+// 固定（1〜33）
+// =======================
+function getFixed(pos) {
+  const map = {
+    11: [17,23],
+    12: [18,24,29],
+    13: [19,25,30],
+    14: [20,26,31],
+    15: [21,27,32],
+    16: [22,28,33]
+  };
+
+  return (map[pos] || []).map(p => p - 1);
 }
 
 // =======================
@@ -143,13 +141,11 @@ function assign(absent, base) {
   const used = new Set();
   const absentSet = new Set(absent);
 
-  const getName = i => base[i]?.name;
-
   // =========================
   // STEP1: ベース固定
   // =========================
   for (let i = 0; i < 16; i++) {
-    const name = getName(i);
+    const name = base[i]?.name;
     if (!name || absentSet.has(name)) continue;
 
     result[i] = name;
@@ -157,35 +153,47 @@ function assign(absent, base) {
   }
 
   // =========================
-  // STEP2: 空き枠処理
+  // STEP2: 空き枠
   // =========================
   for (let i = 0; i < 16; i++) {
 
     if (result[i]) continue;
 
+    const last = lastUsed(i);
     let picked = null;
 
-    // ① 履歴
-    const historyCandidates = getHistoryCandidates(i, base);
-
-    for (const name of historyCandidates) {
-      if (!used.has(name) && !absentSet.has(name)) {
-        picked = name;
-        break;
-      }
+    // =========================
+    // ① 履歴（最優先）
+    // =========================
+    if (last && !used.has(last) && !absentSet.has(last)) {
+      picked = last;
     }
 
-    // ② スライド・固定
-    if (!picked) {
-      const candidates = [
-        ...getSlide(i).map(j => getName(j)),
-        ...getFixed(i).map(j => getName(j))
-      ].filter(n => n && !used.has(n) && !absentSet.has(n));
+    // =========================
+    // ② 連鎖スライド
+    // =========================
+    if (!picked && i <= 9) {
+      const chain = getChainSlide(i + 1)
+        .map(j => base[j]?.name)
+        .filter(n => n && !used.has(n) && !absentSet.has(n));
 
-      picked = candidates[0] || null;
+      picked = chain[0] || null;
     }
 
-    // ③ ⑰以降
+    // =========================
+    // ③ 固定（⑪〜⑯）
+    // =========================
+    if (!picked && i >= 10) {
+      const fixed = getFixed(i + 1)
+        .map(j => base[j]?.name)
+        .filter(n => n && !used.has(n) && !absentSet.has(n));
+
+      picked = fixed[0] || null;
+    }
+
+    // =========================
+    // ④ 残り⑰以降
+    // =========================
     if (!picked) {
       const extra = getExtraPool(base, used, absentSet);
       picked = extra[0] || null;
