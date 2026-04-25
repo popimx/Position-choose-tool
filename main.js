@@ -77,14 +77,28 @@ function range(s, e) {
 }
 
 // =======================
-// 履歴取得
+// 履歴候補取得（拡張）
 // =======================
-function lastUsed(posIndex) {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const v = history[i]?.positions?.[posIndex];
-    if (v) return v;
+function getHistoryCandidates(i, base) {
+
+  const targets = [
+    i,
+    ...getSlide(i),
+    ...getFixed(i)
+  ];
+
+  const list = [];
+
+  for (let h = history.length - 1; h >= 0; h--) {
+    const perf = history[h];
+
+    targets.forEach(t => {
+      const name = perf?.positions?.[t];
+      if (name) list.push(name);
+    });
   }
-  return null;
+
+  return list;
 }
 
 // =======================
@@ -121,7 +135,7 @@ function getExtraPool(base, used, absentSet) {
 }
 
 // =======================
-// 割り当て
+// 割り当て本体
 // =======================
 function assign(absent, base) {
 
@@ -129,42 +143,49 @@ function assign(absent, base) {
   const used = new Set();
   const absentSet = new Set(absent);
 
-  const baseNames = base.map(p => p.name);
+  const getName = i => base[i]?.name;
 
+  // =========================
   // STEP1: ベース固定
+  // =========================
   for (let i = 0; i < 16; i++) {
-    const name = base[i]?.name;
+    const name = getName(i);
     if (!name || absentSet.has(name)) continue;
 
     result[i] = name;
     used.add(name);
   }
 
-  // STEP2: 空き枠
+  // =========================
+  // STEP2: 空き枠処理
+  // =========================
   for (let i = 0; i < 16; i++) {
 
     if (result[i]) continue;
 
-    const last = lastUsed(i);
-
-    const candidates = [
-      ...getSlide(i).map(j => base[j]?.name),
-      ...getFixed(i).map(j => base[j]?.name)
-    ].filter(n => n && !used.has(n) && !absentSet.has(n));
-
     let picked = null;
 
-    // 履歴最優先
-    if (last && !used.has(last) && !absentSet.has(last)) {
-      picked = last;
+    // ① 履歴
+    const historyCandidates = getHistoryCandidates(i, base);
+
+    for (const name of historyCandidates) {
+      if (!used.has(name) && !absentSet.has(name)) {
+        picked = name;
+        break;
+      }
     }
 
-    // スライド・固定
+    // ② スライド・固定
     if (!picked) {
+      const candidates = [
+        ...getSlide(i).map(j => getName(j)),
+        ...getFixed(i).map(j => getName(j))
+      ].filter(n => n && !used.has(n) && !absentSet.has(n));
+
       picked = candidates[0] || null;
     }
 
-    // ⑰以降
+    // ③ ⑰以降
     if (!picked) {
       const extra = getExtraPool(base, used, absentSet);
       picked = extra[0] || null;
@@ -196,7 +217,7 @@ document.getElementById("assign-btn").addEventListener("click", () => {
 });
 
 // =======================
-// 表（★ここだけ変更）
+// 表
 // =======================
 function renderResult(res, base) {
 
@@ -221,7 +242,6 @@ function renderResult(res, base) {
   res.forEach((name, i) => {
 
     const tr = document.createElement("tr");
-
     const posName = base[i]?.name || "";
 
     tr.innerHTML = `
