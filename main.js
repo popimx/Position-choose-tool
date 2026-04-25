@@ -22,7 +22,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // =======================
-// 履歴読み込み
+// 履歴
 // =======================
 async function loadHistory() {
   try {
@@ -62,7 +62,7 @@ function renderMembers() {
 
     label.innerHTML = `
       <input type="checkbox" value="${name}">
-      <span class="member-name">${name}</span>
+      <span>${name}</span>
     `;
 
     membersDiv.appendChild(label);
@@ -73,22 +73,11 @@ function renderMembers() {
 // util
 // =======================
 function range(s, e) {
-  return Array.from({ length: e - s + 1 }, (_, i) => i + s);
+  return Array.from({ length: e - s + 1 }, (_, i) => i + s - 1);
 }
 
 // =======================
-// 履歴取得
-// =======================
-function lastUsed(posIndex) {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const v = history[i]?.positions?.[posIndex];
-    if (v) return v;
-  }
-  return null;
-}
-
-// =======================
-// ★連鎖スライド（1〜33表記）
+// 🔥連鎖スライド（①〜⑩完全対応）
 // =======================
 function getChainSlide(pos) {
   const map = {
@@ -103,37 +92,78 @@ function getChainSlide(pos) {
     9: [15,16],
     10:[16]
   };
-
-  return (map[pos] || []).map(p => p - 1);
+  return (map[pos] || []).map(n => n - 1);
 }
 
 // =======================
-// 固定（1〜33）
+// 🔥履歴＋スライド候補
 // =======================
-function getFixed(pos) {
+function getHistorySlideCandidate(posIndex, base, used, absentSet) {
+
+  const targets = [
+    posIndex,
+    ...getChainSlide(posIndex + 1)
+  ];
+
+  for (let h = history.length - 1; h >= 0; h--) {
+
+    const hist = history[h]?.positions;
+    if (!hist) continue;
+
+    for (const idx of targets) {
+
+      const name = hist[idx];
+
+      if (
+        name &&
+        !used.has(name) &&
+        !absentSet.has(name)
+      ) {
+        return name;
+      }
+    }
+  }
+
+  return null;
+}
+
+// =======================
+// 固定（⑪〜⑯ → ⑰以降）
+// =======================
+function getFixedExtra(posIndex, base, used, absentSet) {
+
   const map = {
-    11: [17,23],
+    10: [16,22],
+    11: [17,23,28],
     12: [18,24,29],
     13: [19,25,30],
     14: [20,26,31],
-    15: [21,27,32],
-    16: [22,28,33]
+    15: [21,27,32]
   };
 
-  return (map[pos] || []).map(p => p - 1);
+  const list = map[posIndex] || [];
+
+  for (const idx of list) {
+    const name = base[idx]?.name;
+    if (name && !used.has(name) && !absentSet.has(name)) {
+      return name;
+    }
+  }
+
+  return null;
 }
 
 // =======================
-// ⑰以降
+// ⑰以降 fallback
 // =======================
-function getExtraPool(base, used, absentSet) {
+function getExtra(base, used, absentSet) {
   return base
     .map(p => p.name)
-    .filter(n => !used.has(n) && !absentSet.has(n));
+    .find(n => !used.has(n) && !absentSet.has(n)) || null;
 }
 
 // =======================
-// 割り当て本体
+// 🔥割り当て本体
 // =======================
 function assign(absent, base) {
 
@@ -141,38 +171,31 @@ function assign(absent, base) {
   const used = new Set();
   const absentSet = new Set(absent);
 
-  // =========================
-  // STEP1: ベース固定
-  // =========================
+  // =====================
+  // STEP1 ベース固定
+  // =====================
   for (let i = 0; i < 16; i++) {
     const name = base[i]?.name;
-    if (!name || absentSet.has(name)) continue;
-
-    result[i] = name;
-    used.add(name);
+    if (name && !absentSet.has(name)) {
+      result[i] = name;
+      used.add(name);
+    }
   }
 
-  // =========================
-  // STEP2: 空き枠
-  // =========================
+  // =====================
+  // STEP2 空き枠
+  // =====================
   for (let i = 0; i < 16; i++) {
 
     if (result[i]) continue;
 
-    const last = lastUsed(i);
     let picked = null;
 
-    // =========================
-    // ① 履歴（最優先）
-    // =========================
-    if (last && !used.has(last) && !absentSet.has(last)) {
-      picked = last;
-    }
+    // ① 履歴＋連鎖スライド
+    picked = getHistorySlideCandidate(i, base, used, absentSet);
 
-    // =========================
-    // ② 連鎖スライド
-    // =========================
-    if (!picked && i <= 9) {
+    // ② スライドルール
+    if (!picked) {
       const chain = getChainSlide(i + 1)
         .map(j => base[j]?.name)
         .filter(n => n && !used.has(n) && !absentSet.has(n));
@@ -180,23 +203,14 @@ function assign(absent, base) {
       picked = chain[0] || null;
     }
 
-    // =========================
-    // ③ 固定（⑪〜⑯）
-    // =========================
-    if (!picked && i >= 10) {
-      const fixed = getFixed(i + 1)
-        .map(j => base[j]?.name)
-        .filter(n => n && !used.has(n) && !absentSet.has(n));
-
-      picked = fixed[0] || null;
+    // ③ ⑪〜⑯ 固定アンダー
+    if (!picked) {
+      picked = getFixedExtra(i, base, used, absentSet);
     }
 
-    // =========================
-    // ④ 残り⑰以降
-    // =========================
+    // ④ 最終 fallback
     if (!picked) {
-      const extra = getExtraPool(base, used, absentSet);
-      picked = extra[0] || null;
+      picked = getExtra(base, used, absentSet);
     }
 
     if (picked) {
@@ -231,6 +245,8 @@ function renderResult(res, base) {
 
   resultDiv.innerHTML = "";
 
+  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
+
   const table = document.createElement("table");
 
   table.innerHTML = `
@@ -245,12 +261,11 @@ function renderResult(res, base) {
 
   const tbody = table.querySelector("tbody");
 
-  const nums = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯"];
-
   res.forEach((name, i) => {
 
-    const tr = document.createElement("tr");
     const posName = base[i]?.name || "";
+
+    const tr = document.createElement("tr");
 
     tr.innerHTML = `
       <td>${nums[i]} ${posName}ポジ</td>
@@ -282,7 +297,6 @@ function buildMenu() {
   const table = document.createElement("table");
 
   let html = `<thead><tr><th>メンバー</th>`;
-
   data.forEach(d => html += `<th>${d.date}</th>`);
   html += `</tr></thead><tbody>`;
 
@@ -300,8 +314,8 @@ function buildMenu() {
   });
 
   html += `</tbody>`;
-
   table.innerHTML = html;
+
   menu.appendChild(table);
 }
 
@@ -309,7 +323,6 @@ function buildMenu() {
 // メニュー開閉
 // =======================
 menuBtn?.addEventListener("click", () => {
-
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
