@@ -22,7 +22,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // =======================
-// 履歴
+// 履歴読み込み
 // =======================
 async function loadHistory() {
   try {
@@ -70,58 +70,51 @@ function renderMembers() {
 }
 
 // =======================
-// util
+// 履歴取得
 // =======================
-function range(s, e) {
-  return Array.from({ length: e - s + 1 }, (_, i) => i + s - 1);
+function lastUsed(posIndex) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const v = history[i]?.positions?.[posIndex];
+    if (v) return v;
+  }
+  return null;
 }
 
 // =======================
-// 🔥連鎖スライド（①〜⑩完全対応）
+// 🔥連鎖スライド生成（①〜⑩）
 // =======================
-function getChainSlide(pos) {
-  const map = {
-    1: [6,7,8,9,10,11,12,13,14,15,16],
-    2: [7,8,9,10,11,12,13,14,15,16],
-    3: [8,9,10,11,12,13,14,15,16],
-    4: [9,10,11,12,13,14,15,16],
-    5: [10,11,12,13,14,15,16],
-    6: [12,13,14,15,16],
-    7: [13,14,15,16],
-    8: [14,15,16],
-    9: [15,16],
-    10:[16]
-  };
-  return (map[pos] || []).map(n => n - 1);
+function getSlideChain(i) {
+
+  const chain = [];
+
+  if (i <= 4) {
+    for (let j = i + 5; j <= 15; j++) chain.push(j);
+  } else if (i <= 9) {
+    for (let j = i + 6; j <= 15; j++) chain.push(j);
+  }
+
+  return chain;
 }
 
 // =======================
-// 🔥履歴＋スライド候補
+// 🔥履歴＋スライド（核心）
 // =======================
-function getHistorySlideCandidate(posIndex, base, used, absentSet) {
+function pickFromHistoryAndSlide(i, base, used, absentSet) {
 
-  const targets = [
-    posIndex,
-    ...getChainSlide(posIndex + 1)
-  ];
+  const last = lastUsed(i);
 
-  for (let h = history.length - 1; h >= 0; h--) {
+  const chain = getSlideChain(i)
+    .map(j => base[j]?.name)
+    .filter(n => n && !used.has(n) && !absentSet.has(n));
 
-    const hist = history[h]?.positions;
-    if (!hist) continue;
+  // 履歴が使えるなら最優先
+  if (last && !used.has(last) && !absentSet.has(last)) {
+    return last;
+  }
 
-    for (const idx of targets) {
-
-      const name = hist[idx];
-
-      if (
-        name &&
-        !used.has(name) &&
-        !absentSet.has(name)
-      ) {
-        return name;
-      }
-    }
+  // スライド
+  if (chain.length) {
+    return chain[0];
   }
 
   return null;
@@ -130,7 +123,7 @@ function getHistorySlideCandidate(posIndex, base, used, absentSet) {
 // =======================
 // 固定（⑪〜⑯ → ⑰以降）
 // =======================
-function getFixedExtra(posIndex, base, used, absentSet) {
+function getFixed(i, base, used, absentSet) {
 
   const map = {
     10: [16,22],
@@ -141,7 +134,7 @@ function getFixedExtra(posIndex, base, used, absentSet) {
     15: [21,27,32]
   };
 
-  const list = map[posIndex] || [];
+  const list = map[i] || [];
 
   for (const idx of list) {
     const name = base[idx]?.name;
@@ -176,6 +169,7 @@ function assign(absent, base) {
   // =====================
   for (let i = 0; i < 16; i++) {
     const name = base[i]?.name;
+
     if (name && !absentSet.has(name)) {
       result[i] = name;
       used.add(name);
@@ -191,24 +185,15 @@ function assign(absent, base) {
 
     let picked = null;
 
-    // ① 履歴＋連鎖スライド
-    picked = getHistorySlideCandidate(i, base, used, absentSet);
+    // ① 履歴最優先
+    picked = pickFromHistoryAndSlide(i, base, used, absentSet);
 
-    // ② スライドルール
-    if (!picked) {
-      const chain = getChainSlide(i + 1)
-        .map(j => base[j]?.name)
-        .filter(n => n && !used.has(n) && !absentSet.has(n));
-
-      picked = chain[0] || null;
+    // ② 固定（⑪〜⑯）
+    if (!picked && i >= 10) {
+      picked = getFixed(i, base, used, absentSet);
     }
 
-    // ③ ⑪〜⑯ 固定アンダー
-    if (!picked) {
-      picked = getFixedExtra(i, base, used, absentSet);
-    }
-
-    // ④ 最終 fallback
+    // ③ fallback
     if (!picked) {
       picked = getExtra(base, used, absentSet);
     }
@@ -323,6 +308,7 @@ function buildMenu() {
 // メニュー開閉
 // =======================
 menuBtn?.addEventListener("click", () => {
+
   const menu = document.getElementById("menu-panel");
   if (!menu) return;
 
